@@ -5,7 +5,7 @@ import { useAuthStore } from "./auth-store";
 import { EventConflator } from "./conflator";
 import { useConnectionStore } from "./connection-store";
 import { useSessionStore } from "./session-store";
-import { useSessionsStore } from "./sessions-store";
+import { markCurrentSeen, useSessionsStore } from "./sessions-store";
 import { handleTerminalData, useTerminalStore } from "./terminal-store";
 import { toast } from "./ui-store";
 
@@ -59,6 +59,8 @@ export function bootstrap(): () => void {
 		transport.on("snapshot", (sessionId, seq, snapshot) => {
 			conflator.flush();
 			sessionStore.applySnapshot(sessionId, seq, snapshot);
+			// The snapshot reports the session file, which is what pairs the view with its row.
+			if (useSessionsStore.getState().currentSessionId === sessionId) markCurrentSeen();
 		}),
 		transport.on("event", (sessionId, seq, event) => {
 			conflator.push(sessionId, seq, event);
@@ -66,11 +68,12 @@ export function bootstrap(): () => void {
 			if (event.type === "process.exit" || event.type === "title.set" || event.type === "state.update") {
 				scheduleReload();
 			}
+			const current = useSessionsStore.getState().currentSessionId === sessionId;
+			// A run that settles in the session on screen has been watched, so it counts as seen.
+			// The list refresh a moment later marks it again with the timestamp of the new entry.
+			if (current && event.type === "run.settled") markCurrentSeen();
 			// Background sessions stay subscribed only while they run (sidebar indicator).
-			if (
-				(event.type === "run.settled" || event.type === "process.exit") &&
-				useSessionsStore.getState().currentSessionId !== sessionId
-			) {
+			if (!current && (event.type === "run.settled" || event.type === "process.exit")) {
 				transport.unsubscribe(sessionId);
 			}
 		}),

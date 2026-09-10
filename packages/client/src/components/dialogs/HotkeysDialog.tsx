@@ -2,8 +2,35 @@ import { Keyboard } from "lucide-react";
 import { SHORTCUT_GROUP_LABEL, SHORTCUT_GROUPS, shortcutsOf } from "@/app/shortcuts";
 import { t } from "@/i18n";
 import { useUiStore } from "@/store/ui-store";
+import { SessionStatusDot } from "../sidebar/SessionStatusDot";
+import { SESSION_STATUS_LABEL, SESSION_STATUSES } from "../sidebar/session-status";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { Kbd } from "../ui/kbd";
+
+/**
+ * What the five circles in the session list mean. It lives with the shortcuts because this is
+ * the one place the app explains itself; the row keeps just the circle.
+ */
+function StatusLegend() {
+	return (
+		<section data-testid="status-legend" className="flex flex-col gap-1.5 border-border/60 border-t pt-3">
+			<div className="flex items-baseline gap-2">
+				<h3 className="font-medium text-[11px] text-muted-foreground uppercase tracking-wide">
+					{t("sessionStatus.legend")}
+				</h3>
+				<span className="text-[11px] text-muted-foreground/70">{t("sessionStatus.legendHint")}</span>
+			</div>
+			<ul className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+				{SESSION_STATUSES.map((status) => (
+					<li key={status} data-testid="legend-row" className="flex items-center gap-2 text-muted-foreground text-xs">
+						<SessionStatusDot status={status} decorative />
+						{t(SESSION_STATUS_LABEL[status])}
+					</li>
+				))}
+			</ul>
+		</section>
+	);
+}
 
 /** Overview of Tau's keyboard shortcuts, rendered from the same table the handlers use. */
 export function HotkeysDialog() {
@@ -40,6 +67,7 @@ export function HotkeysDialog() {
 						</section>
 					))}
 				</div>
+				<StatusLegend />
 				<p className="text-[11px] text-muted-foreground">{t("hotkeys.hint")}</p>
 			</DialogContent>
 		</Dialog>

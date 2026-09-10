@@ -1,5 +1,6 @@
 import type { ImageInput } from "@pi-tau/shared";
 import { create } from "zustand";
+import { pruneSeen, readSeen, type SeenMap, writeSeen } from "@/lib/seen";
 import { readStorage, writeStorage } from "@/lib/storage";
 
 export type Theme = "dark" | "light";
@@ -77,6 +78,10 @@ interface UiStoreState {
 	 */
 	autoRetry: Record<string, boolean>;
 	setAutoRetry: (sessionId: string, enabled: boolean) => void;
+	/** Per session id the `modified` timestamp the user last saw; persisted, see lib/seen.ts. */
+	seen: SeenMap;
+	/** Remember that the session was looked at in this state. Older marks are ignored. */
+	markSeen: (sessionId: string, modified: number) => void;
 }
 
 let toastSeq = 0;
@@ -119,6 +124,15 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 		set((s) => ({ composerInsert: { sessionId, text, append, nonce: (s.composerInsert?.nonce ?? 0) + 1 } })),
 	autoRetry: {},
 	setAutoRetry: (sessionId, enabled) => set((s) => ({ autoRetry: { ...s.autoRetry, [sessionId]: enabled } })),
+	seen: readSeen(),
+	markSeen: (sessionId, modified) =>
+		set((s) => {
+			const known = s.seen[sessionId];
+			if (known !== undefined && known >= modified) return s;
+			const seen = pruneSeen({ ...s.seen, [sessionId]: modified });
+			writeSeen(seen);
+			return { seen };
+		}),
 	scrollOffsets: {},
 	setScrollOffset: (sessionId, offset) =>
 		set((s) => ({

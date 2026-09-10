@@ -250,11 +250,14 @@ export class SessionRegistry extends EventEmitter {
 			// opening a session would change its position.
 			const modified = Math.max(summary.modified, fileMtime(summary.path));
 			if (live) {
+				const snapshot = live.snapshot().state;
 				out.push({
 					...summary,
 					running: live.alive,
-					isStreaming: live.isStreaming,
 					handle: live.handle,
+					needsInput: snapshot.needsInput,
+					isStreaming: live.isStreaming || snapshot.bashRunning,
+					failed: snapshot.lastRunFailed,
 					modified,
 					cwdExists: cwdExists(summary.cwd),
 				});
@@ -284,6 +287,8 @@ export class SessionRegistry extends EventEmitter {
 				isStreaming: s.isStreaming,
 			};
 			if (snap.state.sessionName !== undefined) summary.name = snap.state.sessionName;
+			summary.needsInput = snap.state.needsInput;
+			summary.failed = snap.state.lastRunFailed;
 			if (s.ephemeral) summary.ephemeral = true;
 			out.push(summary);
 		}
