@@ -15,6 +15,7 @@ import type {
 	SessionCreateOptions,
 	SessionSummary,
 } from "@pi-tau/shared";
+import { searchFiles } from "../file-search.js";
 import { patchJsonFile } from "../json-file.js";
 import { createLogger } from "../logger.js";
 import {
@@ -213,6 +214,8 @@ export class SessionRegistry extends EventEmitter {
 				return this.deleteSession(command.sessionPath);
 			case "models.list":
 				return this.listModels();
+			case "fs.searchFiles":
+				return { files: await searchFiles(resolve(command.cwd), command.query, command.limit) };
 			case "fs.listDirs":
 				return listDirs(command.path ?? this.options.defaultCwd);
 			default: {
