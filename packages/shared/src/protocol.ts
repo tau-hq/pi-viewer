@@ -480,6 +480,12 @@ export interface SessionCreateOptions {
 	thinkingLevel?: ThinkingLevel;
 }
 
+export interface FileMatch {
+	/** Path relative to the search directory; directories end with a slash. */
+	path: string;
+	isDirectory: boolean;
+}
+
 export interface TrustInfo {
 	cwd: string;
 	/** true trusted, false rejected, null undecided. */
@@ -578,7 +584,9 @@ export type HostCommand =
 	  }
 	/** Deep-merge a patch into settings.json; null values delete a key. */
 	| { type: "settings.patch"; scope: ConfigScope; cwd?: string; patch: Record<string, unknown> }
-	| { type: "fs.listDirs"; path?: string };
+	| { type: "fs.listDirs"; path?: string }
+	/** Fuzzy project-file search for `@` mentions in the composer; respects .gitignore. */
+	| { type: "fs.searchFiles"; cwd: string; query: string; limit?: number };
 
 export type SessionCommand =
 	| { type: "prompt"; message: string; images?: ImageInput[]; streamingBehavior?: "steer" | "followUp" }
@@ -683,6 +691,7 @@ export interface HostCommandResults {
 	"sessions.delete": null;
 	"models.list": ModelInfo[];
 	"fs.listDirs": { path: string; dirs: string[] };
+	"fs.searchFiles": { files: FileMatch[] };
 	"auth.providers": AuthProviderInfo[];
 	"auth.login": { flowId: string };
 	"auth.answer": null;
