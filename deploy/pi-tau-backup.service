@@ -1,0 +1,16 @@
+[Unit]
+Description=Sicherung des pi-tau-Repositorys nach Google Drive (Git-Bundle)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/srv/pi-tau/ops/backup-repo.sh
+TimeoutStartSec=1800
+Nice=15
+IOSchedulingClass=best-effort
+IOSchedulingPriority=7
+MemoryHigh=512M
+OOMScoreAdjust=500
+StandardOutput=journal
+SyslogIdentifier=pi-tau-backup
