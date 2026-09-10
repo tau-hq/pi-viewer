@@ -109,7 +109,7 @@ export function ModelMenu({
 		<Popover open={isOpen} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
 				<Button variant="ghost" size="sm" disabled={disabled} className={cn("max-w-64 gap-1.5 font-normal", className)}>
-					{current?.reasoning ? <Brain className="text-primary" /> : <Cpu className="text-muted-foreground" />}
+					{current?.reasoning ? <Brain className="text-foreground/70" /> : <Cpu className="text-muted-foreground" />}
 					<span className={cn("truncate", compact && "max-md:hidden")}>
 						{current ? current.name : (placeholder ?? t("header.noModel"))}
 					</span>
