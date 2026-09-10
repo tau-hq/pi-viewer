@@ -200,10 +200,16 @@
 	animation: tau-glow 1.6s ease-in-out infinite;
 }
 
+/* Same breath, slower: a session waiting for an answer should not tick like a running one. */
+@utility animate-glow-slow {
+	animation: tau-glow 2.8s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
 	.animate-in,
 	.animate-pulse-dot,
-	.animate-glow {
+	.animate-glow,
+	.animate-glow-slow {
 		animation: none;
 	}
 }

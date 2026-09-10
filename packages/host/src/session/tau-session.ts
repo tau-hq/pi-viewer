@@ -124,6 +124,9 @@ export class TauSession extends EventEmitter {
 			followUpMode: "one-at-a-time",
 			autoCompactionEnabled: true,
 			autoRetryEnabled: true,
+			needsInput: false,
+			bashRunning: false,
+			lastRunFailed: false,
 			messageCount: 0,
 			pendingMessageCount: 0,
 			processAlive: false,
@@ -330,9 +333,15 @@ export class TauSession extends EventEmitter {
 			case "bash": {
 				const cmd: Parameters<RpcProcess["request"]>[0] = { type: "bash", command: command.command };
 				if (command.excludeFromContext) cmd.excludeFromContext = true;
-				const result = await this.rpc.request(cmd, LONG_TIMEOUT_MS);
-				this.queueRebuild();
-				return result;
+				// pi emits no run for a `!` command, so a long one would look idle everywhere.
+				this.patchState({ bashRunning: true });
+				try {
+					const result = await this.rpc.request(cmd, LONG_TIMEOUT_MS);
+					this.queueRebuild();
+					return result;
+				} finally {
+					this.patchState({ bashRunning: false });
+				}
 			}
 			case "abortBash":
 				return this.rpc.request({ type: "abort_bash" });
@@ -470,6 +479,7 @@ export class TauSession extends EventEmitter {
 		else this.rpc.respondUi({ type: "extension_ui_response", id: response.id, value: response.value });
 		this.pendingUi.delete(response.id);
 		this.push({ type: "ui.resolved", requestId: response.id });
+		this.syncNeedsInput();
 		return null;
 	}
 
@@ -478,6 +488,9 @@ export class TauSession extends EventEmitter {
 	async refreshState(): Promise<void> {
 		const piState = await this.rpc.request<PiSessionState>({ type: "get_state" });
 		const next = toSessionState(piState, this.cwd, this.rpc.alive, this.state.autoRetryEnabled);
+		next.needsInput = this.state.needsInput;
+		next.bashRunning = this.state.bashRunning;
+		next.lastRunFailed = this.state.lastRunFailed;
 		const changed: Partial<SessionState> = {};
 		for (const key of Object.keys(next) as (keyof SessionState)[]) {
 			if (JSON.stringify(next[key]) !== JSON.stringify(this.state[key]))
@@ -550,6 +563,12 @@ export class TauSession extends EventEmitter {
 
 	// ------------------------------------------------------- pi event mapping
 
+	/** Keep the "waiting for you" flag in step with the open dialogs. */
+	private syncNeedsInput(): void {
+		const needsInput = this.pendingUi.size > 0;
+		if (needsInput !== this.state.needsInput) this.patchState({ needsInput });
+	}
+
 	private newLiveId(): string {
 		this.liveCounter++;
 		return `live-${this.handle.slice(0, 8)}-${this.liveCounter}`;
@@ -559,7 +578,7 @@ export class TauSession extends EventEmitter {
 		this.lastActivity = Date.now();
 		switch (event.type) {
 			case "agent_start":
-				this.patchState({ isStreaming: true });
+				this.patchState({ isStreaming: true, lastRunFailed: false });
 				this.push({ type: "run.start" });
 				return;
 			case "agent_end":
@@ -805,6 +824,8 @@ export class TauSession extends EventEmitter {
 
 	private onMessageEnd(message: PiMessage): void {
 		if (message.role === "assistant") {
+			const stop = toStopReason(message.stopReason);
+			if (stop === "error" || stop === "aborted") this.patchState({ lastRunFailed: true });
 			const id = this.streaming?.id ?? this.newLiveId();
 			const final = toMessage(id, message) as AssistantMessage;
 			this.streaming = undefined;
@@ -833,6 +854,7 @@ export class TauSession extends EventEmitter {
 				const ui = toUiRequest(request);
 				this.pendingUi.set(ui.id, ui);
 				this.push({ type: "ui.request", request: ui });
+				this.syncNeedsInput();
 				return;
 			}
 			case "notify":

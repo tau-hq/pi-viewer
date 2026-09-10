@@ -4,6 +4,7 @@ import { t } from "@/i18n";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session-store";
+import { useUiStore } from "@/store/ui-store";
 import { sessionLabel } from "../dialogs/QuickSwitcher";
 import {
 	DropdownMenu,
@@ -12,6 +13,8 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { SessionStatusDot } from "./SessionStatusDot";
+import { sessionStatus } from "./session-status";
 
 export interface SessionActions {
 	onOpen: (session: SessionSummary) => void;
@@ -37,12 +40,17 @@ export function SessionItem({
 	onExportJsonl,
 	onStop,
 }: SessionItemProps) {
-	const liveStreaming = useSessionStore((s) => s.views[session.id]?.state.isStreaming ?? false);
-	const liveAlive = useSessionStore((s) => s.views[session.id]?.state.processAlive);
-	// Only work in progress earns a marker in the row. Whether a pi process happens to be
-	// attached is bookkeeping; it stays in the menu, which offers "Stop process" for it.
-	const streaming = liveStreaming || session.isStreaming;
-	const running = liveAlive ?? session.running;
+	// The live view of a session is addressed by the host handle, which differs from the file's
+	// own session id once a clone or fork has written a new file.
+	const liveKey = session.handle ?? session.id;
+	// `state` changes per state.update, not per streamed token, so the row stays cheap.
+	const liveState = useSessionStore((s) => s.views[liveKey]?.state);
+	const pendingUi = useSessionStore((s) => s.views[liveKey]?.pendingUi.length ?? 0);
+	const seenAt = useUiStore((s) => s.seen[session.id]);
+	const status = sessionStatus(session, liveState ? { ...liveState, pendingUi } : undefined, seenAt);
+	// Whether a pi process happens to be attached is bookkeeping, not a state of the session:
+	// it stays out of the row and only decides whether the menu offers "Stop process".
+	const running = liveState?.processAlive ?? session.running;
 
 	return (
 		<div
@@ -60,11 +68,7 @@ export function SessionItem({
 				className="flex min-w-0 flex-1 items-center gap-2 py-1.5 pr-7 pl-2 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
 				title={session.firstMessage || undefined}
 			>
-				<span
-					aria-hidden
-					className={cn("size-1.5 shrink-0 rounded-full", streaming ? "animate-glow bg-primary" : "bg-transparent")}
-				/>
-				{streaming && <span className="sr-only">{t("sidebar.streaming")}</span>}
+				<SessionStatusDot status={status} />
 				<span className="min-w-0 flex-1 truncate">{sessionLabel(session)}</span>
 				<span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
 					{relativeTime(session.modified)}

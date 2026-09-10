@@ -177,6 +177,12 @@ export interface SessionState {
 	autoRetryEnabled: boolean;
 	/** Undefined when Tau's pi extension is not loaded, so the client can hide the control. */
 	approvalMode?: ApprovalMode;
+	/** An extension dialog (a tool approval, say) is waiting for an answer. */
+	needsInput: boolean;
+	/** A `!` shell command is running. pi reports no run for those, so the host tracks it. */
+	bashRunning: boolean;
+	/** The last run ended in an error or was aborted, and nothing has run since. */
+	lastRunFailed: boolean;
 	messageCount: number;
 	pendingMessageCount: number;
 	/** True while the pi process for this session is alive. */
@@ -335,6 +341,10 @@ export interface SessionSummary {
 	running: boolean;
 	/** True for a session pi does not write to disk (created with the ephemeral option). */
 	ephemeral?: boolean;
+	/** A dialog in this session is waiting for an answer (only known while a process is attached). */
+	needsInput?: boolean;
+	/** The last run in this session ended in an error (only known while a process is attached). */
+	failed?: boolean;
 	/** Host handle of the live session for this file, when one is attached. Subscribe with this. */
 	handle?: string;
 	isStreaming: boolean;

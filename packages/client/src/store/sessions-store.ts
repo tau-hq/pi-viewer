@@ -8,7 +8,7 @@ import { isActiveSummary, isPendingPath } from "@/lib/session-match";
 import { getTransport } from "@/transport/transport";
 import { TransportError } from "@/transport/ws";
 import { useSessionStore } from "./session-store";
-import { toast } from "./ui-store";
+import { toast, useUiStore } from "./ui-store";
 
 interface SessionsStoreState {
 	sessions: SessionSummary[];
@@ -71,6 +71,8 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 				.slice()
 				.sort((a, b) => b.lastModified - a.lastModified);
 			set({ sessions, projects, loaded: true });
+			// The list carries the fresh timestamp of the session on screen, which the user sees.
+			markCurrentSeen();
 		} catch (error) {
 			toast("error", t("toast.commandFailed", { command: "sessions.list", message: errorMessage(error) }));
 		}
@@ -108,6 +110,7 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 		if (sessionId) {
 			useSessionStore.getState().ensure(sessionId);
 			if (!transport.isSubscribed(sessionId)) transport.subscribe(sessionId);
+			markCurrentSeen();
 		}
 	},
 
@@ -210,6 +213,24 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 
 function sessionFileOfHandle(sessionId: string): string | undefined {
 	return useSessionStore.getState().views[sessionId]?.state.sessionFile;
+}
+
+/**
+ * Mark the session on screen as seen, so its sidebar circle goes quiet.
+ *
+ * A session counts as seen while it sits on screen with nothing running in it; the remembered
+ * timestamp is the one the list currently reports, so anything that changes the session
+ * afterwards (a background run, another client) lights the circle up again. Called when a
+ * session becomes the shown one, whenever the list is refreshed and when a run settles.
+ */
+export function markCurrentSeen(): void {
+	const { sessions, currentSessionId } = useSessionsStore.getState();
+	if (!currentSessionId) return;
+	const view = useSessionStore.getState().views[currentSessionId];
+	if (view?.state.isStreaming) return;
+	const summary = sessions.find((entry) => isActiveSummary(entry, currentSessionId, view?.state.sessionFile));
+	if (!summary || summary.isStreaming) return;
+	useUiStore.getState().markSeen(summary.id, summary.modified);
 }
 
 async function ensureOpen(summary: SessionSummary): Promise<string> {
