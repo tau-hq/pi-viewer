@@ -64,8 +64,8 @@ test("picking Auto reaches the status bar and survives a reload", async () => {
 	await expect(page.getByTestId("mode-menu")).toBeHidden();
 	await expect(page.getByTestId("mode-trigger")).toContainText("Auto");
 	await expect(page.getByTestId("status-mode")).toHaveText("Auto");
-	// Warning colour so an unattended session stands out.
-	await expect(page.getByTestId("status-mode").locator("xpath=..")).toHaveClass(/text-warning/);
+	// Full contrast in a muted status bar, so an unattended session stands out without colour.
+	await expect(page.getByTestId("status-mode").locator("xpath=..")).toHaveClass(/text-foreground/);
 	await page.screenshot({ path: `${SHOTS}/71-auto-mode.png` });
 
 	// The host keeps the mode, so a fresh page shows it again.

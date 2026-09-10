@@ -1,17 +1,20 @@
-import type { SessionSummary } from "@pi-tau/shared";
-import { FileUp, PanelLeftClose, Plus, Search, X } from "lucide-react";
+import { FileUp, FolderPlus, PanelLeftClose, Plus, Search, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { t } from "@/i18n";
+import { useConnectionStore } from "@/store/connection-store";
+import { useGroupsStore } from "@/store/groups-store";
 import { useActiveSessionFile, useSessionsStore } from "@/store/sessions-store";
-import { toast, useUiStore } from "@/store/ui-store";
-import { ConfirmDialog } from "../dialogs/ConfirmDialog";
-import { PromptDialog } from "../dialogs/PromptDialog";
+import { useUiStore } from "@/store/ui-store";
 import { Button } from "../ui/button";
+import { ContextMenu, ContextMenuContent, ContextMenuItem, ContextMenuTrigger } from "../ui/context-menu";
 import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { ScrollArea } from "../ui/scroll-area";
-import { groupSessions } from "./grouping";
-import { ProjectGroup } from "./ProjectGroup";
+import { commandFailure, type GroupActions, type SessionActions, type SidebarDrag } from "./actions";
+import { dropAssignment } from "./drop-target";
+import { GroupSection } from "./GroupSection";
+import { buildSidebarGroups } from "./grouping";
+import { SidebarDialogs, type SidebarPrompt } from "./SidebarDialogs";
 import { SidebarFooter } from "./SidebarFooter";
 
 function TauMark() {
@@ -22,17 +25,16 @@ function TauMark() {
 	);
 }
 
-function failure(command: string) {
-	return (error: unknown) => toast("error", t("toast.commandFailed", { command, message: String(error) }));
-}
-
 interface SidebarPanelProps {
 	/** Docked next to the content, or an overlay drawer that closes after navigation. */
 	variant: "docked" | "drawer";
 	onClose: () => void;
 }
 
-/** Session list with search, grouped by project; shared by the docked sidebar and the drawer. */
+/**
+ * Session list with search: the user's own groups first, then a group per project for every
+ * session that is not filed under one. Shared by the docked sidebar and the drawer.
+ */
 export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 	const openDialog = useUiStore((s) => s.openDialog);
 	const sessions = useSessionsStore((s) => s.sessions);
@@ -40,15 +42,78 @@ export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 	const loaded = useSessionsStore((s) => s.loaded);
 	const currentSessionId = useSessionsStore((s) => s.currentSessionId);
 	const activeSessionFile = useActiveSessionFile();
+	const userGroups = useGroupsStore((s) => s.groups);
+	const defaultCwd = useConnectionStore((s) => s.host?.defaultCwd ?? "");
 	const store = useSessionsStore.getState;
+	const groupStore = useGroupsStore.getState;
 	const [query, setQuery] = useState("");
-	const [renameTarget, setRenameTarget] = useState<SessionSummary | undefined>(undefined);
-	const [deleteTarget, setDeleteTarget] = useState<SessionSummary | undefined>(undefined);
+	const [prompt, setPrompt] = useState<SidebarPrompt | undefined>(undefined);
+	const [dragging, setDragging] = useState<SidebarDrag["dragging"]>(undefined);
+	const [dropKey, setDropKey] = useState<string | undefined>(undefined);
 
-	const groups = useMemo(() => groupSessions(projects, sessions, query.trim()), [projects, sessions, query]);
+	const groups = useMemo(
+		() => buildSidebarGroups(userGroups, projects, sessions, query.trim()),
+		[userGroups, projects, sessions, query],
+	);
 	const drawer = variant === "drawer";
 	const afterNavigate = () => {
 		if (drawer) onClose();
+	};
+
+	const endDrag = () => {
+		setDragging(undefined);
+		setDropKey(undefined);
+	};
+
+	const drag: SidebarDrag = {
+		dragging,
+		dropKey,
+		begin: setDragging,
+		end: endDrag,
+		over: setDropKey,
+		leave: (key) => setDropKey((current) => (current === key ? undefined : current)),
+		drop: (target) => {
+			endDrag();
+			const assignment = dragging && dropAssignment(dragging, target);
+			if (assignment) void groupStore().assign(assignment.sessionPath, assignment.groupId);
+		},
+	};
+
+	const actions: SessionActions = {
+		onOpen: (session) => {
+			afterNavigate();
+			void store().open(session).catch(commandFailure("sessions.open"));
+		},
+		onRename: (session) => setPrompt({ kind: "renameSession", session }),
+		onDelete: (session) => setPrompt({ kind: "deleteSession", session }),
+		onExport: (session) => void store().exportHtml(session).catch(commandFailure("exportHtml")),
+		onExportJsonl: (session) => void store().exportJsonl(session).catch(commandFailure("sessions.exportJsonl")),
+		onStop: (session) => void store().stop(session).catch(commandFailure("sessions.close")),
+		onClone: (session) => void store().cloneSession(session).catch(commandFailure("clone")),
+		onAssign: (session, groupId) => void groupStore().assign(session.path, groupId),
+		onNewGroupWith: (session) => setPrompt({ kind: "newGroup", session }),
+	};
+
+	const groupActions: GroupActions = {
+		onNewSession: (group) => {
+			// A group of its own has no directory, so its first session starts where its others
+			// are, and the host's default directory when it is still empty.
+			const cwd = group.cwd ?? group.sessions[0]?.cwd ?? defaultCwd;
+			if (!cwd) {
+				openDialog("newSession");
+				return;
+			}
+			afterNavigate();
+			void groupStore().createSessionIn(cwd, group.groupId ?? null);
+		},
+		onNewGroup: () => setPrompt({ kind: "newGroup" }),
+		onRenameGroup: (group, name) => {
+			if (group.groupId !== undefined) void groupStore().renameGroup(group.groupId, name);
+		},
+		onMoveGroup: (group, direction) => {
+			if (group.groupId !== undefined) void groupStore().moveGroup(group.groupId, direction);
+		},
+		onDeleteGroup: (group) => setPrompt({ kind: "deleteGroup", group }),
 	};
 
 	return (
@@ -99,58 +164,41 @@ export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 					/>
 				</div>
 			</div>
-			<ScrollArea className="min-h-0 flex-1">
-				<div className="px-2 pb-2">
-					{groups.map((group) => (
-						<ProjectGroup
-							key={group.cwd}
-							group={group}
-							currentSessionId={currentSessionId}
-							activeSessionFile={activeSessionFile}
-							onOpen={(session) => {
-								afterNavigate();
-								void store().open(session).catch(failure("sessions.open"));
-							}}
-							onRename={setRenameTarget}
-							onDelete={setDeleteTarget}
-							onExport={(session) => void store().exportHtml(session).catch(failure("exportHtml"))}
-							onExportJsonl={(session) => void store().exportJsonl(session).catch(failure("sessions.exportJsonl"))}
-							onStop={(session) => void store().stop(session).catch(failure("sessions.close"))}
-						/>
-					))}
-					{loaded && groups.length === 0 && (
-						<p className="px-2 py-6 text-center text-muted-foreground text-xs">
-							{sessions.length === 0 ? t("sidebar.noSessions") : t("sidebar.noMatches")}
-						</p>
-					)}
-				</div>
-			</ScrollArea>
+			{/* The whole scroll area is the trigger, so the empty space below the last group answers too. */}
+			<ContextMenu>
+				<ContextMenuTrigger asChild>
+					<ScrollArea data-testid="sidebar-scroll" className="min-h-0 flex-1">
+						<div className="px-2 pb-2" data-testid="sidebar-list">
+							{groups.map((group) => (
+								<GroupSection
+									key={group.key}
+									group={group}
+									currentSessionId={currentSessionId}
+									activeSessionFile={activeSessionFile}
+									actions={actions}
+									groupActions={groupActions}
+									drag={drag}
+								/>
+							))}
+							{loaded && groups.length === 0 && (
+								<p className="px-2 py-6 text-center text-muted-foreground text-xs">
+									{sessions.length === 0 ? t("sidebar.noSessions") : t("sidebar.noMatches")}
+								</p>
+							)}
+						</div>
+					</ScrollArea>
+				</ContextMenuTrigger>
+				<ContextMenuContent data-testid="sidebar-context-menu">
+					<ContextMenuItem onSelect={() => openDialog("newSession")}>
+						<Plus /> {t("sidebar.newSession")}
+					</ContextMenuItem>
+					<ContextMenuItem onSelect={() => setPrompt({ kind: "newGroup" })}>
+						<FolderPlus /> {t("groups.create")}
+					</ContextMenuItem>
+				</ContextMenuContent>
+			</ContextMenu>
 			<SidebarFooter />
-			<PromptDialog
-				open={renameTarget !== undefined}
-				title={t("sidebar.rename")}
-				initialValue={renameTarget?.name ?? ""}
-				placeholder={t("sidebar.renamePrompt")}
-				onCancel={() => setRenameTarget(undefined)}
-				onSubmit={(name) => {
-					const target = renameTarget;
-					setRenameTarget(undefined);
-					if (target) void store().rename(target, name).catch(failure("setName"));
-				}}
-			/>
-			<ConfirmDialog
-				open={deleteTarget !== undefined}
-				title={t("confirm.deleteTitle")}
-				description={t("confirm.deleteDescription")}
-				confirmLabel={t("confirm.delete")}
-				destructive
-				onCancel={() => setDeleteTarget(undefined)}
-				onConfirm={() => {
-					const target = deleteTarget;
-					setDeleteTarget(undefined);
-					if (target) void store().remove(target).catch(failure("sessions.delete"));
-				}}
-			/>
+			<SidebarDialogs prompt={prompt} onClose={() => setPrompt(undefined)} />
 		</>
 	);
 }

@@ -41,11 +41,27 @@ export interface ComposerDraft {
 
 const THEME_KEY = "tau.theme";
 const SIDEBAR_KEY = "tau.sidebar";
+const COLLAPSED_KEY = "tau.sidebar.collapsed";
 
 function initialTheme(): Theme {
 	const stored = readStorage(THEME_KEY);
 	if (stored === "light" || stored === "dark") return stored;
 	return "dark";
+}
+
+/** Keys of the sidebar groups the user folded shut, see components/sidebar/grouping.ts. */
+function initialCollapsed(): Record<string, true> {
+	const raw = readStorage(COLLAPSED_KEY);
+	if (raw === null) return {};
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		if (!Array.isArray(parsed)) return {};
+		const out: Record<string, true> = {};
+		for (const key of parsed) if (typeof key === "string") out[key] = true;
+		return out;
+	} catch {
+		return {};
+	}
 }
 
 interface UiStoreState {
@@ -82,6 +98,9 @@ interface UiStoreState {
 	seen: SeenMap;
 	/** Remember that the session was looked at in this state. Older marks are ignored. */
 	markSeen: (sessionId: string, modified: number) => void;
+	/** Sidebar groups folded shut, by group key; persisted, so a fold survives a reload. */
+	collapsedGroups: Record<string, true>;
+	toggleGroupCollapsed: (key: string) => void;
 }
 
 let toastSeq = 0;
@@ -132,6 +151,14 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 			const seen = pruneSeen({ ...s.seen, [sessionId]: modified });
 			writeSeen(seen);
 			return { seen };
+		}),
+	collapsedGroups: initialCollapsed(),
+	toggleGroupCollapsed: (key) =>
+		set((s) => {
+			const collapsedGroups =
+				key in s.collapsedGroups ? without(s.collapsedGroups, key) : { ...s.collapsedGroups, [key]: true as const };
+			writeStorage(COLLAPSED_KEY, JSON.stringify(Object.keys(collapsedGroups)));
+			return { collapsedGroups };
 		}),
 	scrollOffsets: {},
 	setScrollOffset: (sessionId, offset) =>

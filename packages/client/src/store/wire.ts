@@ -4,6 +4,7 @@ import { getTransport } from "@/transport/transport";
 import { useAuthStore } from "./auth-store";
 import { EventConflator } from "./conflator";
 import { useConnectionStore } from "./connection-store";
+import { useGroupsStore } from "./groups-store";
 import { useSessionStore } from "./session-store";
 import { markCurrentSeen, useSessionsStore } from "./sessions-store";
 import { handleTerminalData, useTerminalStore } from "./terminal-store";
@@ -46,15 +47,22 @@ export function bootstrap(): () => void {
 		reloadTimer = setTimeout(() => {
 			reloadTimer = undefined;
 			void useSessionsStore.getState().loadSessions();
+			// Groups live on the host, so another browser's change arrives with the same signal.
+			void useGroupsStore.getState().load();
 		}, 300);
 	};
 
 	const offs = [
+		// A session created for a group is filed as soon as the list reports its written file.
+		useSessionsStore.subscribe((state, previous) => {
+			if (state.sessions !== previous.sessions) useGroupsStore.getState().flushDeferred(state.sessions);
+		}),
 		transport.on("status", (status, attempt) => useConnectionStore.getState().setStatus(status, attempt)),
 		transport.on("error", (message) => useConnectionStore.getState().setError(message)),
 		transport.on("hello", (host) => {
 			useConnectionStore.getState().setHost(host);
 			void useSessionsStore.getState().loadAll();
+			void useGroupsStore.getState().load();
 		}),
 		transport.on("snapshot", (sessionId, seq, snapshot) => {
 			conflator.flush();
