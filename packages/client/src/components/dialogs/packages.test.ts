@@ -12,16 +12,22 @@ describe("parsePackages", () => {
 				"junk",
 			]),
 		).toEqual([
-			{ source: "npm:a", scope: "user", filtered: false, installedPath: "/x" },
-			{ source: "npm:b", scope: "project", filtered: true },
+			{ source: "npm:a", scope: "user", filtered: false, installed: true, installedPath: "/x" },
+			{ source: "npm:b", scope: "project", filtered: true, installed: false },
 		]);
 	});
 
 	it("accepts the wrapped shape and unknown data", () => {
 		expect(parsePackages({ packages: [{ source: "npm:a", scope: "user" }] })).toEqual([
-			{ source: "npm:a", scope: "user", filtered: false },
+			{ source: "npm:a", scope: "user", filtered: false, installed: false },
 		]);
 		expect(parsePackages(undefined)).toEqual([]);
+	});
+
+	it("takes the host's installed flag, and falls back to the install path", () => {
+		expect(parsePackages([{ source: "npm:a", scope: "user", installed: true }])[0]?.installed).toBe(true);
+		expect(parsePackages([{ source: "npm:a", scope: "user", installedPath: "/x" }])[0]?.installed).toBe(true);
+		expect(parsePackages([{ source: "npm:a", scope: "user", installed: false }])[0]?.installed).toBe(false);
 	});
 });
 

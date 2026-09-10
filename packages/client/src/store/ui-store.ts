@@ -65,8 +65,9 @@ interface UiStoreState {
 	drafts: Record<string, ComposerDraft>;
 	setDraft: (sessionId: string, draft: ComposerDraft | undefined) => void;
 	/** Text a dialog asked to put into the composer; the nonce keeps repeats distinguishable. */
-	composerInsert: { sessionId: string; text: string; nonce: number } | undefined;
-	insertIntoComposer: (sessionId: string, text: string) => void;
+	composerInsert: { sessionId: string; text: string; nonce: number; append: boolean } | undefined;
+	/** `append` keeps an unsent draft and adds the text on a new line instead of replacing it. */
+	insertIntoComposer: (sessionId: string, text: string, append?: boolean) => void;
 	/** Transcript scroll offset per session; a missing entry means "follow the bottom". */
 	scrollOffsets: Record<string, number>;
 	setScrollOffset: (sessionId: string, offset: number | undefined) => void;
@@ -114,8 +115,8 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 	setDraft: (sessionId, draft) =>
 		set((s) => ({ drafts: draft ? { ...s.drafts, [sessionId]: draft } : without(s.drafts, sessionId) })),
 	composerInsert: undefined,
-	insertIntoComposer: (sessionId, text) =>
-		set((s) => ({ composerInsert: { sessionId, text, nonce: (s.composerInsert?.nonce ?? 0) + 1 } })),
+	insertIntoComposer: (sessionId, text, append = false) =>
+		set((s) => ({ composerInsert: { sessionId, text, append, nonce: (s.composerInsert?.nonce ?? 0) + 1 } })),
 	autoRetry: {},
 	setAutoRetry: (sessionId, enabled) => set((s) => ({ autoRetry: { ...s.autoRetry, [sessionId]: enabled } })),
 	scrollOffsets: {},

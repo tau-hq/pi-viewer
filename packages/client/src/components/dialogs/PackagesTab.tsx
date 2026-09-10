@@ -44,6 +44,11 @@ function PackageRow({ entry, busy, onUpdate, onRemove }: RowProps) {
 					<span className="block truncate font-mono text-[11px] text-muted-foreground">{entry.installedPath}</span>
 				)}
 			</span>
+			{!entry.installed && (
+				<Badge variant="outline" title={t("packages.notInstalledHint")} className="text-warning">
+					{t("packages.notInstalled")}
+				</Badge>
+			)}
 			{entry.filtered && (
 				<Badge variant="outline" title={t("packages.filteredHint")}>
 					{t("packages.filtered")}

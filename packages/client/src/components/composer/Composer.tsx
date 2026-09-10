@@ -1,3 +1,4 @@
+import type { FileMatch } from "@pi-tau/shared";
 import { ImagePlus, ListPlus, Send, Square, Zap } from "lucide-react";
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { t } from "@/i18n";
@@ -10,7 +11,9 @@ import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { ImageChips } from "./ImageChips";
+import { handleMentionKey, MentionMenu, useMentionMenu } from "./MentionMenu";
 import { cycleApprovalMode, ModeMenu } from "./ModeMenu";
+import { applyMention } from "./mentions";
 import { SlashMenu, useSlashMenu } from "./SlashMenu";
 import { parseSlash, type SlashItem } from "./slash-commands";
 import { useComposerActions } from "./useComposerActions";
@@ -56,10 +59,17 @@ export function Composer({ sessionId }: { sessionId: string }) {
 	const composerInsert = useUiStore((s) => s.composerInsert);
 	const connected = useConnectionStore((s) => s.status === "connected");
 	const [value, setValue] = useState(() => useUiStore.getState().drafts[sessionId]?.text ?? "");
+	const [caret, setCaret] = useState(0);
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const valueRef = useRef(value);
+	valueRef.current = value;
+	// Caret to restore once React has written a programmatic value change to the DOM.
+	const pendingCaret = useRef<number | undefined>(undefined);
 	const attachments = useImageAttachments(useUiStore.getState().drafts[sessionId]?.images);
 	const actions = useComposerActions(sessionId);
 	const menu = useSlashMenu(value);
+	// `/` at the start of the line stays command completion, so only one popup is ever open.
+	const mentions = useMentionMenu(sessionId, value, caret, !menu.open);
 
 	// Unsent text and images survive switching sessions.
 	useEffect(() => {
@@ -70,6 +80,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 	useEffect(() => {
 		if (!editorRequest || appliedEditorRequests.get(sessionId) === editorRequest.nonce) return;
 		appliedEditorRequests.set(sessionId, editorRequest.nonce);
+		pendingCaret.current = editorRequest.text.length;
 		setValue(editorRequest.text);
 		textareaRef.current?.focus();
 	}, [editorRequest, sessionId]);
@@ -78,7 +89,11 @@ export function Composer({ sessionId }: { sessionId: string }) {
 		if (!composerInsert || composerInsert.sessionId !== sessionId) return;
 		if (appliedInserts.get(sessionId) === composerInsert.nonce) return;
 		appliedInserts.set(sessionId, composerInsert.nonce);
-		setValue(composerInsert.text);
+		// An append keeps an unsent draft and puts the text on a line of its own.
+		const current = valueRef.current.replace(/\s+$/, "");
+		const next = composerInsert.append && current ? `${current}\n${composerInsert.text}` : composerInsert.text;
+		pendingCaret.current = next.length;
+		setValue(next);
 		textareaRef.current?.focus();
 	}, [composerInsert, sessionId]);
 
@@ -86,14 +101,23 @@ export function Composer({ sessionId }: { sessionId: string }) {
 		textareaRef.current?.focus();
 	}, []);
 
-	// Auto-grow up to MAX_ROWS; an empty editor snaps back to a single line.
+	// Auto-grow up to MAX_ROWS (an empty editor snaps back to a single line), then place a caret
+	// a programmatic value change asked for, before the browser paints the new text.
 	useLayoutEffect(() => {
 		const el = textareaRef.current;
 		if (!el) return;
 		el.style.height = "auto";
 		const max = MAX_ROWS * LINE_HEIGHT_PX + VERTICAL_PADDING_PX;
 		el.style.height = value.length === 0 ? "" : `${Math.min(el.scrollHeight, max)}px`;
+		if (pendingCaret.current === undefined) return;
+		const position = Math.min(pendingCaret.current, value.length);
+		pendingCaret.current = undefined;
+		el.setSelectionRange(position, position);
+		setCaret(position);
 	}, [value]);
+
+	/** Every caret move matters for `@` mentions: typing, clicking and arrow keys all sync it. */
+	const syncCaret = () => setCaret(textareaRef.current?.selectionStart ?? 0);
 
 	const mode = value.startsWith("!!") ? "bashExcluded" : value.startsWith("!") ? "bash" : "prompt";
 	const hasContent = value.trim().length > 0 || attachments.images.length > 0;
@@ -101,6 +125,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 
 	const reset = () => {
 		setValue("");
+		setCaret(0);
 		attachments.clear();
 	};
 
@@ -127,8 +152,18 @@ export function Composer({ sessionId }: { sessionId: string }) {
 			actions.runSlash(item.name, "");
 			reset();
 		} else {
+			pendingCaret.current = item.name.length + 2;
 			setValue(`/${item.name} `);
 		}
+		textareaRef.current?.focus();
+	};
+
+	/** Insert the path only: the model reads the file itself, so no content is inlined. */
+	const pickFile = (file: FileMatch) => {
+		if (!mentions.mention) return;
+		const next = applyMention(value, mentions.mention, file);
+		pendingCaret.current = next.caret;
+		setValue(next.text);
 		textareaRef.current?.focus();
 	};
 
@@ -139,6 +174,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 			cycleApprovalMode();
 			return;
 		}
+		if (handleMentionKey(event, mentions, pickFile)) return;
 		if (menu.open) {
 			if (event.key === "ArrowDown" || event.key === "ArrowUp") {
 				event.preventDefault();
@@ -178,7 +214,11 @@ export function Composer({ sessionId }: { sessionId: string }) {
 
 	return (
 		<div className="relative" {...attachments.dragHandlers}>
-			{menu.open && <SlashMenu menu={menu} onPick={pick} />}
+			{menu.open ? (
+				<SlashMenu menu={menu} onPick={pick} />
+			) : (
+				mentions.open && <MentionMenu menu={mentions} onPick={pickFile} />
+			)}
 			<div
 				className={cn(
 					"flex flex-col rounded-xl border bg-card shadow-sm transition-colors focus-within:ring-2 focus-within:ring-ring/30",
@@ -190,8 +230,14 @@ export function Composer({ sessionId }: { sessionId: string }) {
 					ref={textareaRef}
 					rows={1}
 					value={value}
-					onChange={(e) => setValue(e.target.value)}
+					onChange={(e) => {
+						setValue(e.target.value);
+						setCaret(e.target.selectionStart ?? e.target.value.length);
+					}}
 					onKeyDown={onKeyDown}
+					onKeyUp={syncCaret}
+					onClick={syncCaret}
+					onSelect={syncCaret}
 					onPaste={attachments.onPaste}
 					placeholder={placeholder}
 					disabled={!alive && connected}
