@@ -66,6 +66,10 @@ test("the icon grows into a field and finds an entry of this session", async () 
 	await expect(results.getByTestId("search-result").first()).toContainText(MARKER);
 	await page.screenshot({ path: `${SHOTS}/90-search-open.png`, animations: "disabled" });
 
+	// Enter keeps the list open, so repeated presses walk through the hits.
+	await input.press("Enter");
+	await expect(results).toBeVisible();
+
 	// Picking a hit that is on screen closes the field again.
 	await results.getByTestId("search-result").first().click();
 	await expect(input).toBeHidden();
