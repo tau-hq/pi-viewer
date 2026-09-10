@@ -16,7 +16,7 @@ import { SidebarFooter } from "./SidebarFooter";
 
 function TauMark() {
 	return (
-		<span className="flex size-6 items-center justify-center rounded-md bg-primary font-semibold text-primary-foreground text-sm">
+		<span className="flex size-6 items-center justify-center rounded-md border border-border bg-secondary font-semibold text-foreground text-sm">
 			τ
 		</span>
 	);

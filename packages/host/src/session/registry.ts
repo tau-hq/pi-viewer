@@ -16,6 +16,16 @@ import type {
 	SessionSummary,
 } from "@pi-tau/shared";
 import { searchFiles } from "../file-search.js";
+import {
+	assignments,
+	assignSession,
+	createGroup,
+	deleteGroup,
+	listGroups,
+	pruneAssignments,
+	renameGroup,
+	reorderGroups,
+} from "../groups.js";
 import { patchJsonFile } from "../json-file.js";
 import { createLogger } from "../logger.js";
 import {
@@ -214,6 +224,24 @@ export class SessionRegistry extends EventEmitter {
 				return this.deleteSession(command.sessionPath);
 			case "models.list":
 				return this.listModels();
+			case "groups.list":
+				return listGroups();
+			case "groups.create":
+				return createGroup(command.name);
+			case "groups.rename":
+				return renameGroup(command.id, command.name);
+			case "groups.delete": {
+				const groups = deleteGroup(command.id);
+				this.notifyChanged();
+				return groups;
+			}
+			case "groups.assign": {
+				const groups = assignSession(command.sessionPath, command.groupId);
+				this.notifyChanged();
+				return groups;
+			}
+			case "groups.reorder":
+				return reorderGroups(command.ids);
 			case "fs.searchFiles":
 				return { files: await searchFiles(resolve(command.cwd), command.query, command.limit) };
 			case "fs.listDirs":
@@ -228,6 +256,7 @@ export class SessionRegistry extends EventEmitter {
 	async listSessions(cwd?: string): Promise<SessionSummary[]> {
 		const all = await listAllSessions();
 		const filtered = cwd ? all.filter((s) => resolve(s.cwd) === resolve(cwd)) : all;
+		const groupOf = assignments();
 		const dirExists = new Map<string, boolean>();
 		const cwdExists = (dir: string): boolean => {
 			const key = resolve(dir);
@@ -260,8 +289,12 @@ export class SessionRegistry extends EventEmitter {
 					failed: snapshot.lastRunFailed,
 					modified,
 					cwdExists: cwdExists(summary.cwd),
+					...(groupOf[resolve(summary.path)] ? { groupId: groupOf[resolve(summary.path)] } : {}),
 				});
-			} else out.push({ ...summary, modified, cwdExists: cwdExists(summary.cwd) });
+			} else {
+				const groupId = groupOf[resolve(summary.path)];
+				out.push({ ...summary, modified, cwdExists: cwdExists(summary.cwd), ...(groupId ? { groupId } : {}) });
+			}
 		}
 		// Sessions whose file pi has not written yet (no assistant message so far).
 		for (const s of this.sessions.values()) {
@@ -293,6 +326,9 @@ export class SessionRegistry extends EventEmitter {
 			out.push(summary);
 		}
 		out.sort((a, b) => b.modified - a.modified);
+		// Only prune when looking at every project, otherwise a filtered call would drop
+		// the assignments of all the sessions it did not ask about.
+		if (cwd === undefined) pruneAssignments(new Set(out.map((s) => resolve(s.path))));
 		return out;
 	}
 

@@ -19,9 +19,12 @@ const ICONS: Record<ApprovalMode, ComponentType<{ className?: string }>> = {
 	strict: ShieldCheck,
 };
 
-/** An unattended session is worth a warning colour wherever the mode is shown. */
+/**
+ * An unattended session should stand out, but the interface stays colourless: the mode is
+ * simply drawn at full contrast where everything around it is muted.
+ */
 export function approvalModeClass(mode: ApprovalMode): string | undefined {
-	return mode === "auto" ? "text-warning" : undefined;
+	return mode === "auto" ? "font-medium text-foreground" : undefined;
 }
 
 /**

@@ -329,6 +329,8 @@ export interface SessionSummary {
 	id: string;
 	/** False when the recorded working directory no longer exists; sessions there cannot be resumed. */
 	cwdExists?: boolean;
+	/** Group the user filed this session under; unset means it is grouped by project. */
+	groupId?: string;
 	path: string;
 	cwd: string;
 	name?: string;
@@ -348,6 +350,17 @@ export interface SessionSummary {
 	/** Host handle of the live session for this file, when one is attached. Subscribe with this. */
 	handle?: string;
 	isStreaming: boolean;
+}
+
+/**
+ * A user-made group in the sidebar. Sessions not assigned to one keep falling back to
+ * their project directory, which is what the sidebar shows when no group exists at all.
+ */
+export interface SessionGroup {
+	id: string;
+	name: string;
+	/** Ascending; the sidebar lists groups in this order, above the project groups. */
+	order: number;
 }
 
 export interface ProjectInfo {
@@ -594,6 +607,15 @@ export type HostCommand =
 	  }
 	/** Deep-merge a patch into settings.json; null values delete a key. */
 	| { type: "settings.patch"; scope: ConfigScope; cwd?: string; patch: Record<string, unknown> }
+	| { type: "groups.list" }
+	| { type: "groups.create"; name: string }
+	| { type: "groups.rename"; id: string; name: string }
+	/** Deletes the group; its sessions fall back to their project. */
+	| { type: "groups.delete"; id: string }
+	/** Move one session into a group, or back to its project with `groupId: null`. */
+	| { type: "groups.assign"; sessionPath: string; groupId: string | null }
+	/** New order, given as the group ids from top to bottom. */
+	| { type: "groups.reorder"; ids: string[] }
 	| { type: "fs.listDirs"; path?: string }
 	/** Fuzzy project-file search for `@` mentions in the composer; respects .gitignore. */
 	| { type: "fs.searchFiles"; cwd: string; query: string; limit?: number };
@@ -700,6 +722,12 @@ export interface HostCommandResults {
 	"sessions.close": null;
 	"sessions.delete": null;
 	"models.list": ModelInfo[];
+	"groups.list": SessionGroup[];
+	"groups.create": SessionGroup[];
+	"groups.rename": SessionGroup[];
+	"groups.delete": SessionGroup[];
+	"groups.assign": SessionGroup[];
+	"groups.reorder": SessionGroup[];
 	"fs.listDirs": { path: string; dirs: string[] };
 	"fs.searchFiles": { files: FileMatch[] };
 	"auth.providers": AuthProviderInfo[];
