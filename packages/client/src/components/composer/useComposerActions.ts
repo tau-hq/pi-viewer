@@ -5,7 +5,7 @@ import { parseBashResult } from "@/lib/result-data";
 import { useSessionStore } from "@/store/session-store";
 import { copyLastAnswer, exportSessionHtml, exportSessionJsonl, useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
-import { THINKING_LEVELS } from "../header/ThinkingPicker";
+import { THINKING_LEVELS } from "./ThinkingPicker";
 
 export interface ComposerActions {
 	/** Send text as prompt, or steer/follow-up while a run is active. */

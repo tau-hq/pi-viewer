@@ -12,10 +12,12 @@ import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { ImageChips } from "./ImageChips";
 import { handleMentionKey, MentionMenu, useMentionMenu } from "./MentionMenu";
+import { ModelPicker } from "./ModelPicker";
 import { cycleApprovalMode, ModeMenu } from "./ModeMenu";
 import { applyMention } from "./mentions";
 import { SlashMenu, useSlashMenu } from "./SlashMenu";
 import { parseSlash, type SlashItem } from "./slash-commands";
+import { ThinkingPicker } from "./ThinkingPicker";
 import { useComposerActions } from "./useComposerActions";
 import { useImageAttachments } from "./useImageAttachments";
 
@@ -244,7 +246,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 					spellCheck={mode === "prompt"}
 					className="max-h-64 min-h-[46px] w-full resize-none bg-transparent px-4 py-3 font-sans text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
 				/>
-				<div className="flex items-center gap-1 px-2 pb-2">
+				<div data-testid="composer-tools" className="flex flex-wrap items-center gap-1 px-2 pb-2">
 					<IconButton
 						size="iconSm"
 						label={t("composer.attach")}
@@ -252,6 +254,8 @@ export function Composer({ sessionId }: { sessionId: string }) {
 						onClick={attachments.openPicker}
 					/>
 					<ModeMenu sessionId={sessionId} />
+					<ModelPicker sessionId={sessionId} />
+					<ThinkingPicker sessionId={sessionId} />
 					{mode !== "prompt" && (
 						<Badge variant="warning" className="text-bash">
 							{mode === "bash" ? t("composer.bashMode") : t("composer.bashExcluded")}

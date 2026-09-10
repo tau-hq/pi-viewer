@@ -1,7 +1,7 @@
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
 import { useUiStore } from "@/store/ui-store";
-import { ModelMenu } from "./ModelMenu";
+import { ModelMenu } from "../header/ModelMenu";
 
 export function ModelPicker({ sessionId }: { sessionId: string }) {
 	const current = useSessionStore((s) => s.views[sessionId]?.state.model);

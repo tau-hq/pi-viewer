@@ -394,6 +394,20 @@ export interface ToolInfo {
 	active: boolean;
 }
 
+export interface SearchMatch {
+	/** pi's durable entry id: usable for tree navigation and for scrolling the transcript. */
+	entryId: string;
+	role: MessageRole | "other";
+	/** The matching line, trimmed, with the hit somewhere inside it. */
+	preview: string;
+	/** Character offset of the hit inside `preview`, so the client can mark it. */
+	offset: number;
+	length: number;
+	/** False for a hit in an abandoned branch or in history that a compaction replaced. */
+	onActivePath: boolean;
+	timestamp: string;
+}
+
 export interface ForkMessageInfo {
 	entryId: string;
 	text: string;
@@ -645,6 +659,8 @@ export type SessionCommand =
 	| { type: "clone" }
 	| { type: "getForkMessages" }
 	| { type: "getTree" }
+	/** Search every entry of the session, including abandoned branches and pre-compaction history. */
+	| { type: "search"; query: string; limit?: number }
 	| { type: "setName"; name: string }
 	| { type: "getCommands" }
 	| { type: "getModels" }
@@ -784,6 +800,7 @@ export interface SessionCommandResults {
 	clone: { cancelled: boolean };
 	getForkMessages: ForkMessageInfo[];
 	getTree: { tree: TreeNode[]; leafId: string | null };
+	search: { matches: SearchMatch[]; truncated: boolean };
 	setName: null;
 	getCommands: CommandInfo[];
 	getModels: ModelInfo[];

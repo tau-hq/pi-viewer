@@ -13,10 +13,9 @@ import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
 import { HeaderMenu } from "./HeaderMenu";
-import { ModelPicker } from "./ModelPicker";
+import { SearchBox } from "./SearchBox";
 import { SessionNameEditor } from "./SessionNameEditor";
 import { StatsPopover } from "./StatsPopover";
-import { ThinkingPicker } from "./ThinkingPicker";
 
 export function SessionHeader({ sessionId }: { sessionId: string }) {
 	const cwd = useSessionStore((s) => s.views[sessionId]?.state.cwd ?? "");
@@ -54,8 +53,7 @@ export function SessionHeader({ sessionId }: { sessionId: string }) {
 				)}
 			</div>
 			<div className="flex shrink-0 items-center gap-0.5">
-				<ModelPicker sessionId={sessionId} />
-				<ThinkingPicker sessionId={sessionId} />
+				<SearchBox key={sessionId} sessionId={sessionId} />
 				<IconButton
 					label={t("header.terminal")}
 					icon={<SquareTerminal />}

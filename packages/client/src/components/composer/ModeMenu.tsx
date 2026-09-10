@@ -2,7 +2,6 @@ import type { ApprovalMode } from "@pi-tau/shared";
 import { ChevronDown, Shield, ShieldCheck, ShieldHalf, ShieldOff } from "lucide-react";
 import { type ComponentType, type KeyboardEvent, useState } from "react";
 import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
 import { toast } from "@/store/ui-store";
@@ -18,14 +17,6 @@ const ICONS: Record<ApprovalMode, ComponentType<{ className?: string }>> = {
 	manual: Shield,
 	strict: ShieldCheck,
 };
-
-/**
- * An unattended session should stand out, but the interface stays colourless: the mode is
- * simply drawn at full contrast where everything around it is muted.
- */
-export function approvalModeClass(mode: ApprovalMode): string | undefined {
-	return mode === "auto" ? "font-medium text-foreground" : undefined;
-}
 
 /**
  * Switch the mode optimistically: the host patches its own state and answers with a
@@ -70,7 +61,6 @@ export function ModeMenu({ sessionId }: { sessionId: string }) {
 
 	if (!mode) return null;
 	const Icon = ICONS[mode];
-	const warn = approvalModeClass(mode);
 
 	// Number keys pick an entry while the menu is open, like the shortcuts in the approval dialog.
 	const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
@@ -89,10 +79,10 @@ export function ModeMenu({ sessionId }: { sessionId: string }) {
 					size="sm"
 					disabled={!alive}
 					data-testid="mode-trigger"
-					className={cn("gap-1.5 font-normal", warn)}
+					className="gap-1.5 font-normal"
 					title={`${t("mode.title")} · ${t("mode.cycle")}`}
 				>
-					<Icon className={warn ?? "text-muted-foreground"} />
+					<Icon className="text-muted-foreground" />
 					{t(APPROVAL_MODE_TEXT[mode].title)}
 					<ChevronDown className="size-3.5 text-muted-foreground" />
 				</Button>
@@ -107,7 +97,7 @@ export function ModeMenu({ sessionId }: { sessionId: string }) {
 						onSelect={() => applyApprovalMode(sessionId, item)}
 					>
 						<span className="flex min-w-0 flex-col gap-0.5">
-							<span className={cn("flex items-center gap-2", approvalModeClass(item))}>
+							<span className="flex items-center gap-2">
 								{t(APPROVAL_MODE_TEXT[item].title)}
 								<Kbd>{index + 1}</Kbd>
 							</span>
