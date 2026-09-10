@@ -19,6 +19,24 @@ export function messageText(message: Message): string {
 }
 
 /**
+ * What the copy button of a message row puts on the clipboard: the plain text a reader sees.
+ * Assistant messages lose their thinking blocks (`blocksText` keeps text blocks only), tool
+ * results keep their line breaks, and a shell card carries its command plus the output.
+ */
+export function copyableText(message: Message): string {
+	switch (message.role) {
+		case "toolResult":
+			return toolResultText(message);
+		case "bashExecution": {
+			const output = message.output.replace(/\s+$/, "");
+			return output ? `${message.command}\n${output}` : message.command;
+		}
+		default:
+			return messageText(message);
+	}
+}
+
+/**
  * Text of the newest assistant message that has any, for pi's `/copy`. Assistant messages that
  * only carry tool calls are skipped: they would copy an empty string.
  */

@@ -1,6 +1,13 @@
-import type { AssistantMessage, Message, UserMessage } from "@pi-tau/shared";
+import type {
+	AssistantMessage,
+	BashExecutionMessage,
+	CompactionSummaryMessage,
+	Message,
+	ToolResultMessage,
+	UserMessage,
+} from "@pi-tau/shared";
 import { describe, expect, it } from "vitest";
-import { lastAssistantText } from "./messages";
+import { copyableText, lastAssistantText } from "./messages";
 
 function assistant(id: string, ...texts: string[]): AssistantMessage {
 	return {
@@ -36,5 +43,66 @@ describe("lastAssistantText", () => {
 	it("is undefined without any assistant text", () => {
 		expect(lastAssistantText([user("u", "hi")])).toBeUndefined();
 		expect(lastAssistantText([])).toBeUndefined();
+	});
+});
+
+describe("copyableText", () => {
+	it("takes a user message as it was typed", () => {
+		expect(copyableText(user("u", "read the protocol"))).toBe("read the protocol");
+	});
+
+	it("joins the text blocks of an assistant message and leaves thinking and tool calls out", () => {
+		const message: AssistantMessage = {
+			...assistant("a", "answer"),
+			content: [
+				{ type: "thinking", thinking: "secret reasoning" },
+				{ type: "text", text: "visible " },
+				{ type: "toolCall", id: "1", name: "bash", arguments: {} },
+				{ type: "text", text: "answer" },
+			],
+		};
+		expect(copyableText(message)).toBe("visible answer");
+	});
+
+	it("keeps the line breaks of a tool result", () => {
+		const result: ToolResultMessage = {
+			role: "toolResult",
+			id: "r",
+			toolCallId: "1",
+			toolName: "read",
+			content: [
+				{ type: "text", text: "first" },
+				{ type: "text", text: "second" },
+			],
+			isError: false,
+			timestamp: 0,
+		};
+		expect(copyableText(result)).toBe("first\nsecond");
+	});
+
+	it("puts the command of a shell card in front of its output", () => {
+		const bash: BashExecutionMessage = {
+			role: "bashExecution",
+			id: "b",
+			command: "echo hi",
+			output: "hi\n\n",
+			exitCode: 0,
+			cancelled: false,
+			truncated: false,
+			timestamp: 0,
+		};
+		expect(copyableText(bash)).toBe("echo hi\nhi");
+		expect(copyableText({ ...bash, output: "  \n" })).toBe("echo hi");
+	});
+
+	it("takes the summary of a compaction", () => {
+		const summary: CompactionSummaryMessage = {
+			role: "compactionSummary",
+			id: "c",
+			summary: "what happened so far",
+			tokensBefore: 100,
+			timestamp: 0,
+		};
+		expect(copyableText(summary)).toBe("what happened so far");
 	});
 });

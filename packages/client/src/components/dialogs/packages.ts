@@ -15,7 +15,13 @@ export function parsePackages(data: unknown): PackageEntry[] {
 	return pickArray<unknown>(data, "packages").flatMap((raw) => {
 		const record = asRecord(raw);
 		if (!record || typeof record.source !== "string" || !isScope(record.scope)) return [];
-		const entry: PackageEntry = { source: record.source, scope: record.scope, filtered: record.filtered === true };
+		const entry: PackageEntry = {
+			source: record.source,
+			scope: record.scope,
+			filtered: record.filtered === true,
+			// The host derives this from the install path, so a missing flag follows the path.
+			installed: record.installed === true || typeof record.installedPath === "string",
+		};
 		if (typeof record.installedPath === "string") entry.installedPath = record.installedPath;
 		return [entry];
 	});

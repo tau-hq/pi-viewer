@@ -1,9 +1,9 @@
-import { ListX, X } from "lucide-react";
+import { ListX, Pencil, X } from "lucide-react";
 import { useState } from "react";
 import { t } from "@/i18n";
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
-import { toast } from "@/store/ui-store";
+import { toast, useUiStore } from "@/store/ui-store";
 import { Badge } from "../ui/badge";
 import { IconButton } from "../ui/icon-button";
 import { parseClearedQueue, type QueueEntry, queueEntries, requeueCommands } from "./queue";
@@ -22,18 +22,25 @@ export function QueuePanel({ sessionId }: { sessionId: string }) {
 	const entries = queueEntries(steering, followUp);
 
 	/** pi only clears the whole queue, so drop it and queue everything but this entry again. */
-	const remove = async (entry: QueueEntry) => {
-		if (busy) return;
+	const remove = async (entry: QueueEntry): Promise<boolean> => {
+		if (busy) return false;
 		setBusy(true);
 		try {
 			const cleared = parseClearedQueue(await commandSilent({ type: "clearQueue" }));
 			for (const next of requeueCommands(cleared, entry)) await commandSilent(next);
 			toast("info", t("toast.queueEntryRemoved"));
+			return true;
 		} catch (error) {
 			toast("error", t("toast.commandFailed", { command: "clearQueue", message: String(error) }));
+			return false;
 		} finally {
 			setBusy(false);
 		}
+	};
+
+	/** Take an entry out of the queue and back into the composer to edit it before sending again. */
+	const edit = async (entry: QueueEntry) => {
+		if (await remove(entry)) useUiStore.getState().insertIntoComposer(sessionId, entry.text, true);
 	};
 
 	return (
@@ -48,6 +55,14 @@ export function QueuePanel({ sessionId }: { sessionId: string }) {
 							{entry.kind === "steering" ? t("composer.queueSteering") : t("composer.queueFollowUp")}
 						</Badge>
 						<span className="min-w-0 flex-1 truncate">{entry.text}</span>
+						<IconButton
+							size="iconSm"
+							data-testid="queue-entry-edit"
+							label={t("composer.editQueued")}
+							icon={<Pencil />}
+							disabled={busy}
+							onClick={() => void edit(entry)}
+						/>
 						<IconButton
 							size="iconSm"
 							data-testid="queue-entry-remove"
