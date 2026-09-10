@@ -1,0 +1,44 @@
+{
+  "$schema": "../../../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Tau",
+  "version": "0.0.1",
+  "identifier": "app.pitau.tau",
+  "build": {
+    "frontendDist": "../../client/dist",
+    "devUrl": "http://127.0.0.1:5173"
+  },
+  "app": {
+    "windows": [],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb",
+      "appimage",
+      "nsis",
+      "msi",
+      "dmg"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    },
+    "externalBin": [
+      "binaries/tau-node"
+    ],
+    "resources": {
+      "../../client/dist/": "client/",
+      "../../pi-extension/src/": "extension/",
+      "binaries/host/": "host/"
+    }
+  }
+}

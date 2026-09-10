@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "binaries/pi-linux/": "pi/",
+      "binaries/node-pty-linux/": "node-pty/"
+    }
+  }
+}

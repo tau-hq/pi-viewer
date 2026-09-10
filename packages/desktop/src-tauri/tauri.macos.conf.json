@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "binaries/pi-macos/": "pi/",
+      "binaries/node-pty-macos/": "node-pty/"
+    }
+  }
+}

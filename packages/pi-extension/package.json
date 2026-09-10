@@ -1,0 +1,13 @@
+{
+	"name": "@pi-tau/pi-extension",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"main": "./src/index.ts",
+	"dependencies": {
+		"@pi-tau/shared": "0.0.1"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": "0.85.1"
+	}
+}

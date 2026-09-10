@@ -1,0 +1,52 @@
+name: desktop
+
+# Builds the Tau desktop app (Tauri 2) with the host and pi sidecars for Windows, Linux and macOS.
+# Artifacts are attached to the workflow run; publish them as a release manually.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            target: windows-x64
+            bundles: nsis
+          - os: ubuntu-24.04
+            target: linux-x64
+            bundles: deb,appimage
+          - os: macos-latest
+            target: darwin-arm64
+            bundles: dmg
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - run: npm ci --ignore-scripts
+      - name: Build client
+        run: ./node_modules/.bin/tsc -b packages/client && (cd packages/client && ../../node_modules/.bin/vite build)
+      - name: Prepare sidecars
+        shell: bash
+        run: scripts/prepare-sidecars.sh ${{ matrix.target }}
+      - name: Build desktop bundles
+        run: ./node_modules/.bin/tauri build --bundles ${{ matrix.bundles }}
+        working-directory: packages/desktop
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tau-${{ matrix.target }}
+          path: |
+            packages/desktop/src-tauri/target/release/bundle/**/*.exe
+            packages/desktop/src-tauri/target/release/bundle/**/*.msi
+            packages/desktop/src-tauri/target/release/bundle/**/*.deb
+            packages/desktop/src-tauri/target/release/bundle/**/*.AppImage
+            packages/desktop/src-tauri/target/release/bundle/**/*.dmg

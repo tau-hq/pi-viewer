@@ -1,0 +1,21 @@
+# Tau host as a systemd service (VPS). Install:
+#   cp deploy/tau-host.service /etc/systemd/system/ && systemctl daemon-reload && systemctl enable --now tau-host
+# The host binds to 127.0.0.1; reach it through an SSH tunnel: ssh -L 8787:127.0.0.1:8787 root@<vps>
+[Unit]
+Description=Tau host (pi coding agent GUI backend)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/srv/pi-tau/packages/host
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=TAU_LOG_LEVEL=info
+Environment=TAU_APPROVAL=mutating
+ExecStart=/usr/local/bin/node /srv/pi-tau/node_modules/.bin/tsx src/cli.ts --cwd /srv/pi-tau --idle-minutes 120
+Restart=on-failure
+RestartSec=3
+KillSignal=SIGTERM
+TimeoutStopSec=20
+
+[Install]
+WantedBy=multi-user.target

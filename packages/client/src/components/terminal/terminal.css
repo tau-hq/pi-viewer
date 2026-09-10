@@ -1,0 +1,15 @@
+/*
+ * xterm.js overrides for the terminal panel. Imported right after xterm's own stylesheet in
+ * TerminalPanel, so these rules win on order instead of needing !important.
+ */
+
+/* The fit addon measures the parent and subtracts this padding, so rows stay exact. */
+.tau-terminal .xterm {
+	height: 100%;
+	padding: 4px 2px 4px 8px;
+}
+
+/* xterm.css paints the viewport opaque black; let the themed panel background through. */
+.tau-terminal .xterm-viewport {
+	background-color: transparent;
+}
