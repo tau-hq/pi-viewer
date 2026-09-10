@@ -109,15 +109,19 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	/**
 	 * A hit the transcript is showing only needs a scroll. Anything else lives on another
 	 * branch or before a compaction, and pi reaches it the way the session tree does.
+	 * A click is done with the search and closes it; Enter keeps the list open, so repeated
+	 * presses walk through the hits the way a browser's find does.
 	 */
-	const jump = (match: SearchMatch) => {
+	const jump = (match: SearchMatch, andClose: boolean) => {
 		const view = useSessionStore.getState().views[sessionId];
 		const shown = view?.messages.some((message) => message.id === match.entryId) ?? false;
 		if (shown) {
 			revealEntry(sessionId, match.entryId);
-			close();
+			if (andClose) close();
 			return;
 		}
+		// Moving the session to another branch always ends the search: it is a real change,
+		// and repeating it by holding Enter would drag the session around.
 		void command({ type: "navigateTree", entryId: match.entryId })
 			.then(() => {
 				revealEntry(sessionId, match.entryId);
@@ -140,7 +144,10 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 		} else if (event.key === "Enter") {
 			event.preventDefault();
 			const match = matches[active];
-			if (match) jump(match);
+			if (!match) return;
+			jump(match, false);
+			// Wrap around, so the last hit leads back to the first instead of standing still.
+			setActive((index) => (index + 1) % matches.length);
 		}
 	};
 
@@ -212,7 +219,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 										key={match.entryId}
 										data-testid="search-result"
 										onMouseEnter={() => setActive(index)}
-										onClick={() => jump(match)}
+										onClick={() => jump(match, true)}
 										title={match.onActivePath ? undefined : t("search.otherBranch")}
 										className={cn(
 											"flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left",
