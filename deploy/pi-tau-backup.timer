@@ -1,0 +1,14 @@
+[Unit]
+Description=Taeglich 03:15 - pi-tau-Repository sichern
+
+[Timer]
+# 03:15, also vor der Weltsicherung (03:30), der Systemsicherung (04:00)
+# und dem Update-Lauf (05:00). Der Lauf dauert Sekunden.
+OnCalendar=*-*-* 03:15:00 Europe/Berlin
+Persistent=true
+RandomizedDelaySec=120
+AccuracySec=1min
+Unit=pi-tau-backup.service
+
+[Install]
+WantedBy=timers.target
