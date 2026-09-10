@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, openApp } from "./helpers";
+import { closeEphemeralSessions, collectErrors, composer, openApp } from "./helpers";
 
 /**
  * Round B features that need a session: the advanced options of session creation, the package
@@ -29,6 +29,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async () => {
+	// The advanced-options test creates an ephemeral session; its process would idle on.
+	await closeEphemeralSessions(page);
 	await page.close();
 	// The resource switch writes into the project's settings file; leave the checkout as it was.
 	if (settingsBefore === undefined) rmSync(PROJECT_SETTINGS, { force: true });
