@@ -32,6 +32,13 @@ interface SessionsStoreState {
 	rename: (summary: SessionSummary, name: string) => Promise<void>;
 	remove: (summary: SessionSummary) => Promise<void>;
 	stop: (summary: SessionSummary) => Promise<void>;
+	/**
+	 * Local copy of a session's group, so a drop in the sidebar moves the row at once. The
+	 * host's own list arrives a moment later (it broadcasts sessions.changed) and wins.
+	 */
+	setSessionGroup: (sessionPath: string, groupId: string | null) => void;
+	/** Local fallback of every session of a deleted group to its project. */
+	dropSessionGroup: (groupId: string) => void;
 	exportHtml: (summary: SessionSummary) => Promise<void>;
 	exportJsonl: (summary: SessionSummary) => Promise<void>;
 	/** Run a session command against the shown session; failures become toasts. */
@@ -40,6 +47,15 @@ interface SessionsStoreState {
 	commandSilent: (command: SessionCommand) => Promise<unknown>;
 	/** Clone the shown session into a new file; the host keeps the handle and replaces the transcript. */
 	clone: () => Promise<void>;
+	/** Clone any listed session, whether or not it is the one on screen. */
+	cloneSession: (summary: SessionSummary) => Promise<void>;
+}
+
+/** A summary with its group set, or with the key removed when it belongs to its project again. */
+function withGroup(summary: SessionSummary, groupId: string | null): SessionSummary {
+	if (groupId !== null) return { ...summary, groupId };
+	const { groupId: _dropped, ...rest } = summary;
+	return rest;
 }
 
 function errorMessage(error: unknown): string {
@@ -175,6 +191,16 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 		await get().loadSessions();
 	},
 
+	setSessionGroup: (sessionPath, groupId) =>
+		set((s) => ({
+			sessions: s.sessions.map((session) => (session.path === sessionPath ? withGroup(session, groupId) : session)),
+		})),
+
+	dropSessionGroup: (groupId) =>
+		set((s) => ({
+			sessions: s.sessions.map((session) => (session.groupId === groupId ? withGroup(session, null) : session)),
+		})),
+
 	exportHtml: async (summary) => {
 		const sessionId = await resolveHandle(summary);
 		await exportSessionHtml(sessionId);
@@ -205,6 +231,15 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 
 	clone: async () => {
 		const data = await get().command({ type: "clone" });
+		const cancelled = asRecord(data)?.cancelled === true;
+		toast("info", cancelled ? t("toast.cloneCancelled") : t("toast.cloned"));
+		await get().loadSessions();
+	},
+
+	cloneSession: async (summary) => {
+		// Cloning needs a pi process for the file, which resolveHandle spawns when there is none.
+		const sessionId = await resolveHandle(summary);
+		const data = await getTransport().sendSession(sessionId, { type: "clone" });
 		const cancelled = asRecord(data)?.cancelled === true;
 		toast("info", cancelled ? t("toast.cloneCancelled") : t("toast.cloned"));
 		await get().loadSessions();

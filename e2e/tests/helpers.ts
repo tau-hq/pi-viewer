@@ -99,6 +99,48 @@ export function e2eSessionName(kind: string): string {
 	return kind ? `tau ${kind} e2e ${time}` : `tau e2e ${time}`;
 }
 
+/** Prefix of every sidebar group this suite makes; `deleteE2eGroups` matches on it. */
+export const E2E_GROUP_PREFIX = "tau e2e group";
+
+/**
+ * Delete every sidebar group this suite created. Matches on the name prefix only, so a group
+ * the user made keeps standing; deleting a group never touches its sessions.
+ */
+export async function deleteE2eGroups(page: Page): Promise<number> {
+	return page.evaluate(async (prefix) => {
+		const socket = new WebSocket(`ws://${location.host}/ws`);
+		await new Promise<void>((resolve, reject) => {
+			socket.onopen = () => resolve();
+			socket.onerror = () => reject(new Error("host socket failed"));
+		});
+		let id = 0;
+		const pending = new Map<string, (data: unknown) => void>();
+		socket.onmessage = (event) => {
+			const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+			if (envelope.type !== "result" || !envelope.id) return;
+			pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+			pending.delete(envelope.id);
+		};
+		const send = (command: unknown): Promise<unknown> =>
+			new Promise((resolve) => {
+				const key = String(++id);
+				pending.set(key, resolve);
+				socket.send(JSON.stringify({ type: "cmd", id: key, command }));
+			});
+		// TAU_PROTOCOL_VERSION; the host refuses a hello with another version.
+		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+		const groups = ((await send({ type: "groups.list" })) ?? []) as { id: string; name: string }[];
+		let removed = 0;
+		for (const group of groups) {
+			if (!group.name.startsWith(prefix)) continue;
+			await send({ type: "groups.delete", id: group.id });
+			removed++;
+		}
+		socket.close();
+		return removed;
+	}, E2E_GROUP_PREFIX);
+}
+
 /**
  * Delete every session this suite created, so a test run leaves the machine as it found it.
  * Matches on the name only: a session the user wrote is never touched, whatever it contains.

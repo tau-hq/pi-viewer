@@ -4,24 +4,11 @@ import { Search } from "lucide-react";
 import { type KeyboardEvent, useEffect, useMemo, useState } from "react";
 import { t } from "@/i18n";
 import { basename, relativeTime } from "@/lib/format";
+import { matchesQuery, sessionLabel } from "@/lib/session-match";
 import { cn } from "@/lib/utils";
 import { useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
 import { Dialog, DialogContent } from "../ui/dialog";
-
-export function sessionLabel(session: SessionSummary): string {
-	return session.name?.trim() || session.firstMessage.trim().replace(/\s+/g, " ") || t("sidebar.untitled");
-}
-
-export function matchesQuery(session: SessionSummary, query: string): boolean {
-	if (!query) return true;
-	const haystack = `${session.name ?? ""}\n${session.firstMessage}\n${session.cwd}`.toLowerCase();
-	return query
-		.toLowerCase()
-		.split(/\s+/)
-		.filter(Boolean)
-		.every((term) => haystack.includes(term));
-}
 
 export function QuickSwitcher() {
 	const open = useUiStore((s) => s.dialog === "quickSwitcher");

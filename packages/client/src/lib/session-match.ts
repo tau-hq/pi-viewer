@@ -1,7 +1,24 @@
 import type { SessionSummary } from "@pi-tau/shared";
+import { t } from "@/i18n";
 
 /** The host lists sessions whose file pi has not written yet under this prefix. */
 const PENDING_PREFIX = "pending:";
+
+/** What a session is called in a list: its name, else its first message, else a placeholder. */
+export function sessionLabel(session: SessionSummary): string {
+	return session.name?.trim() || session.firstMessage.trim().replace(/\s+/g, " ") || t("sidebar.untitled");
+}
+
+/** Every whitespace-separated term of `query` has to appear in name, first message or directory. */
+export function matchesQuery(session: SessionSummary, query: string): boolean {
+	if (!query) return true;
+	const haystack = `${session.name ?? ""}\n${session.firstMessage}\n${session.cwd}`.toLowerCase();
+	return query
+		.toLowerCase()
+		.split(/\s+/)
+		.filter(Boolean)
+		.every((term) => haystack.includes(term));
+}
 
 export function isPendingPath(path: string): boolean {
 	return path.startsWith(PENDING_PREFIX);

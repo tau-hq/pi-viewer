@@ -226,10 +226,18 @@ export class SessionRegistry extends EventEmitter {
 				return this.listModels();
 			case "groups.list":
 				return listGroups();
-			case "groups.create":
-				return createGroup(command.name);
-			case "groups.rename":
-				return renameGroup(command.id, command.name);
+			// Every change to the groups is visible to other clients right away, not only when
+			// a session happens to change as well.
+			case "groups.create": {
+				const groups = createGroup(command.name);
+				this.notifyChanged();
+				return groups;
+			}
+			case "groups.rename": {
+				const groups = renameGroup(command.id, command.name);
+				this.notifyChanged();
+				return groups;
+			}
 			case "groups.delete": {
 				const groups = deleteGroup(command.id);
 				this.notifyChanged();
@@ -240,8 +248,11 @@ export class SessionRegistry extends EventEmitter {
 				this.notifyChanged();
 				return groups;
 			}
-			case "groups.reorder":
-				return reorderGroups(command.ids);
+			case "groups.reorder": {
+				const groups = reorderGroups(command.ids);
+				this.notifyChanged();
+				return groups;
+			}
 			case "fs.searchFiles":
 				return { files: await searchFiles(resolve(command.cwd), command.query, command.limit) };
 			case "fs.listDirs":
@@ -323,6 +334,9 @@ export class SessionRegistry extends EventEmitter {
 			summary.needsInput = snap.state.needsInput;
 			summary.failed = snap.state.lastRunFailed;
 			if (s.ephemeral) summary.ephemeral = true;
+			// A session pi has not written yet still belongs to the group it was filed under.
+			const groupId = groupOf[resolve(summary.path)];
+			if (groupId !== undefined) summary.groupId = groupId;
 			out.push(summary);
 		}
 		out.sort((a, b) => b.modified - a.modified);

@@ -41,6 +41,28 @@ export const en = {
 		session: "1 session",
 		renamePrompt: "New name",
 		actions: "Session actions",
+		openSession: "Open",
+		clone: "Clone session",
+	},
+	/** Groups the user makes in the sidebar; sessions without one stay grouped by project. */
+	groups: {
+		newSession: "New session here",
+		create: "New group…",
+		createTitle: "New group",
+		namePlaceholder: "Group name",
+		rename: "Rename group",
+		renameHint: "Enter saves, Esc keeps the old name",
+		delete: "Delete group",
+		deleteTitle: "Delete this group?",
+		deleteDescription: "The group is removed. Its sessions stay and fall back to their projects.",
+		moveUp: "Move up",
+		moveDown: "Move down",
+		moveTo: "Move to group",
+		noGroup: "No group",
+		dropHint: "Drag sessions here",
+		deleted: "Group deleted, its sessions kept",
+		collapse: "Collapse group",
+		expand: "Expand group",
 	},
 	/** The circle left of a session name; the same wording labels it and explains it. */
 	sessionStatus: {
