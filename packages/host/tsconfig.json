@@ -1,0 +1,16 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"rootDir": "src",
+		"outDir": "dist",
+		"composite": true,
+		"types": ["node"],
+		"resolveJsonModule": true
+	},
+	"include": ["src", "package.json"],
+	"references": [
+		{
+			"path": "../shared"
+		}
+	]
+}

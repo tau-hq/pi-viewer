@@ -1,0 +1,8 @@
+{
+  "bundle": {
+    "resources": {
+      "binaries/pi-windows/": "pi/",
+      "binaries/node-pty-windows/": "node-pty/"
+    }
+  }
+}

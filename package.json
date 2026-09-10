@@ -1,0 +1,29 @@
+{
+  "name": "pi-tau",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Tau: web and desktop GUI for the pi coding agent",
+  "license": "MIT",
+  "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "dev": "npm run dev --workspace=@pi-tau/host",
+    "build": "npm run build --workspaces --if-present",
+    "check": "biome check . && tsc -b",
+    "test": "vitest run",
+    "test:e2e": "playwright test -c e2e/playwright.config.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.12",
+    "@playwright/test": "1.63.0",
+    "@types/node": "22.20.2",
+    "tsx": "4.23.13",
+    "typescript": "7.0.2",
+    "vitest": "5.0.0"
+  }
+}

@@ -1,0 +1,19 @@
+node_modules/
+dist/
+.reference/
+.env
+*.local
+.DS_Store
+*.log
+.vite/
+target/
+*.tsbuildinfo
+test-results/
+playwright-report/
+src-tauri/target/
+src-tauri/gen/
+e2e/shots/
+packages/desktop/src-tauri/binaries/
+
+# npm lockfile stays local: pi pins its own tree via its shrinkwrap, our deps are exact
+package-lock.json

@@ -1,0 +1,344 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Tau design tokens: dark first. Values are OKLCH so the ramp stays perceptually even. */
+:root {
+	--background: oklch(0.985 0.002 260);
+	--foreground: oklch(0.2 0.01 260);
+	--card: oklch(1 0 0);
+	--card-foreground: oklch(0.2 0.01 260);
+	--popover: oklch(1 0 0);
+	--popover-foreground: oklch(0.2 0.01 260);
+	--primary: oklch(0.55 0.17 265);
+	--primary-foreground: oklch(0.985 0 0);
+	--secondary: oklch(0.955 0.005 260);
+	--secondary-foreground: oklch(0.25 0.01 260);
+	--muted: oklch(0.955 0.005 260);
+	--muted-foreground: oklch(0.5 0.01 260);
+	--accent: oklch(0.94 0.01 265);
+	--accent-foreground: oklch(0.2 0.01 260);
+	--destructive: oklch(0.6 0.2 25);
+	--border: oklch(0.9 0.005 260);
+	--input: oklch(0.9 0.005 260);
+	--ring: oklch(0.55 0.17 265);
+	--success: oklch(0.6 0.15 150);
+	--warning: oklch(0.75 0.15 80);
+	--bash: oklch(0.65 0.15 60);
+	--user-bubble: oklch(0.94 0.02 265);
+	--radius: 0.625rem;
+
+	/* Terminal palette (xterm.js). Read with getComputedStyle, see components/terminal/xterm-theme.ts. */
+	--term-background: oklch(0.985 0.002 260);
+	--term-foreground: oklch(0.25 0.01 260);
+	--term-cursor: oklch(0.55 0.17 265);
+	--term-black: oklch(0.45 0.01 260);
+	--term-red: oklch(0.55 0.2 25);
+	--term-green: oklch(0.53 0.14 150);
+	--term-yellow: oklch(0.62 0.13 80);
+	--term-blue: oklch(0.53 0.17 265);
+	--term-magenta: oklch(0.55 0.19 320);
+	--term-cyan: oklch(0.55 0.1 210);
+	--term-white: oklch(0.72 0.005 260);
+	--term-bright-black: oklch(0.6 0.01 260);
+	--term-bright-red: oklch(0.62 0.2 25);
+	--term-bright-green: oklch(0.62 0.15 150);
+	--term-bright-yellow: oklch(0.72 0.14 80);
+	--term-bright-blue: oklch(0.62 0.17 265);
+	--term-bright-magenta: oklch(0.63 0.19 320);
+	--term-bright-cyan: oklch(0.64 0.1 210);
+	--term-bright-white: oklch(0.35 0.005 260);
+}
+
+.dark {
+	--background: oklch(0.16 0.006 270);
+	--foreground: oklch(0.93 0.005 260);
+	--card: oklch(0.2 0.006 270);
+	--card-foreground: oklch(0.93 0.005 260);
+	--popover: oklch(0.21 0.006 270);
+	--popover-foreground: oklch(0.93 0.005 260);
+	--primary: oklch(0.72 0.14 265);
+	--primary-foreground: oklch(0.14 0.01 265);
+	--secondary: oklch(0.24 0.006 270);
+	--secondary-foreground: oklch(0.93 0.005 260);
+	--muted: oklch(0.24 0.006 270);
+	--muted-foreground: oklch(0.65 0.01 260);
+	--accent: oklch(0.27 0.008 270);
+	--accent-foreground: oklch(0.95 0.005 260);
+	--destructive: oklch(0.65 0.19 25);
+	--border: oklch(0.27 0.008 270);
+	--input: oklch(0.3 0.008 270);
+	--ring: oklch(0.72 0.14 265);
+	--success: oklch(0.7 0.15 150);
+	--warning: oklch(0.8 0.15 80);
+	--bash: oklch(0.78 0.14 60);
+	--user-bubble: oklch(0.27 0.02 265);
+
+	--term-background: oklch(0.13 0.006 270);
+	--term-foreground: oklch(0.9 0.005 260);
+	--term-cursor: oklch(0.72 0.14 265);
+	--term-black: oklch(0.32 0.008 270);
+	--term-red: oklch(0.65 0.19 25);
+	--term-green: oklch(0.72 0.15 150);
+	--term-yellow: oklch(0.8 0.14 80);
+	--term-blue: oklch(0.68 0.15 265);
+	--term-magenta: oklch(0.7 0.17 320);
+	--term-cyan: oklch(0.75 0.1 210);
+	--term-white: oklch(0.85 0.005 260);
+	--term-bright-black: oklch(0.5 0.008 270);
+	--term-bright-red: oklch(0.74 0.17 25);
+	--term-bright-green: oklch(0.82 0.15 150);
+	--term-bright-yellow: oklch(0.88 0.13 90);
+	--term-bright-blue: oklch(0.78 0.13 265);
+	--term-bright-magenta: oklch(0.79 0.15 320);
+	--term-bright-cyan: oklch(0.84 0.09 210);
+	--term-bright-white: oklch(0.98 0 0);
+}
+
+@theme inline {
+	/* Layout switches to the phone variant (sidebar drawer, icon-only header) below 900px. */
+	--breakpoint-md: 56.25rem;
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-success: var(--success);
+	--color-warning: var(--warning);
+	--color-bash: var(--bash);
+	--color-user-bubble: var(--user-bubble);
+	--radius-sm: calc(var(--radius) - 4px);
+	--radius-md: calc(var(--radius) - 2px);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) + 4px);
+	--font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+	html,
+	body,
+	#root {
+		height: 100%;
+	}
+	body {
+		@apply bg-background text-foreground antialiased;
+		overflow: hidden;
+	}
+	::selection {
+		background: color-mix(in oklch, var(--primary) 35%, transparent);
+	}
+}
+
+/* Thin, unobtrusive scrollbars */
+* {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklch, var(--foreground) 18%, transparent) transparent;
+}
+
+/* ---- motion ------------------------------------------------------------ */
+
+@keyframes tau-enter {
+	from {
+		opacity: 0;
+		transform: translateY(2px) scale(0.98);
+	}
+	to {
+		opacity: 1;
+		transform: none;
+	}
+}
+
+@keyframes tau-pulse-dot {
+	0%,
+	80%,
+	100% {
+		opacity: 0.25;
+		transform: scale(0.8);
+	}
+	40% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@keyframes tau-glow {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+
+@utility animate-in {
+	animation: tau-enter 140ms ease-out;
+}
+
+@utility animate-pulse-dot {
+	animation: tau-pulse-dot 1.2s ease-in-out infinite;
+}
+
+@utility animate-glow {
+	animation: tau-glow 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.animate-in,
+	.animate-pulse-dot,
+	.animate-glow {
+		animation: none;
+	}
+}
+
+/* ---- markdown ---------------------------------------------------------- */
+
+.md {
+	line-height: 1.6;
+	overflow-wrap: anywhere;
+}
+.md > * + * {
+	margin-top: 0.65em;
+}
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+	font-weight: 600;
+	line-height: 1.3;
+}
+.md > h1,
+.md > h2,
+.md > h3,
+.md > h4 {
+	margin-top: 1.1em;
+}
+.md h1 {
+	font-size: 1.25rem;
+}
+.md h2 {
+	font-size: 1.125rem;
+}
+.md h3 {
+	font-size: 1rem;
+}
+.md h4 {
+	font-size: 0.95rem;
+}
+.md p {
+	margin: 0;
+}
+.md ul {
+	list-style: disc;
+	padding-left: 1.4em;
+}
+.md ol {
+	list-style: decimal;
+	padding-left: 1.5em;
+}
+.md li + li {
+	margin-top: 0.2em;
+}
+.md li > ul,
+.md li > ol {
+	margin-top: 0.2em;
+}
+.md ul.contains-task-list {
+	list-style: none;
+	padding-left: 0.4em;
+}
+.md input[type="checkbox"] {
+	margin-right: 0.4em;
+	vertical-align: -1px;
+}
+.md blockquote {
+	border-left: 2px solid var(--border);
+	padding-left: 0.8em;
+	color: var(--muted-foreground);
+}
+.md a {
+	color: var(--primary);
+	text-decoration: underline;
+	text-underline-offset: 2px;
+}
+.md hr {
+	border: 0;
+	border-top: 1px solid var(--border);
+}
+.md img {
+	max-width: 100%;
+	border-radius: 6px;
+}
+.md strong {
+	font-weight: 600;
+}
+.md del {
+	color: var(--muted-foreground);
+}
+.md code:not(pre code) {
+	font-family: var(--font-mono);
+	font-size: 0.85em;
+	background: color-mix(in oklch, var(--foreground) 8%, transparent);
+	padding: 0.1em 0.35em;
+	border-radius: 4px;
+}
+.md table {
+	display: block;
+	max-width: 100%;
+	overflow-x: auto;
+	border-collapse: collapse;
+	font-size: 0.9em;
+}
+.md th,
+.md td {
+	border: 1px solid var(--border);
+	padding: 0.3em 0.6em;
+	text-align: left;
+	vertical-align: top;
+}
+.md th {
+	background: var(--muted);
+	font-weight: 600;
+}
+
+/* ---- code blocks (shiki dual theme) ------------------------------------ */
+
+.code-block pre {
+	margin: 0;
+	overflow-x: auto;
+	padding: 0.75rem 0.9rem;
+	font-size: 0.8125rem;
+	line-height: 1.55;
+}
+.code-block pre code {
+	font-family: var(--font-mono);
+	white-space: pre;
+}
+.shiki {
+	background: transparent;
+}
+.shiki,
+.shiki span {
+	color: var(--shiki-light);
+}
+.dark .shiki,
+.dark .shiki span {
+	color: var(--shiki-dark);
+}
