@@ -63,6 +63,31 @@ function activePath(entries: PiEntry[], leafId: string | null | undefined): Set<
 }
 
 /**
+ * The hit inside its line, cut to a readable length. Cuts land on word boundaries and are
+ * marked with an ellipsis, so a preview never starts in the middle of a word.
+ */
+function previewAround(text: string, at: number, length: number): { preview: string; offset: number } {
+	const lineStart = text.lastIndexOf("\n", at) + 1;
+	const lineEnd = text.indexOf("\n", at);
+	const hardEnd = lineEnd === -1 ? text.length : lineEnd;
+	let start = Math.max(lineStart, at - PREVIEW_BEFORE);
+	let end = Math.min(hardEnd, at + length + PREVIEW_AFTER);
+	if (start > lineStart) {
+		const space = text.indexOf(" ", start);
+		if (space !== -1 && space < at) start = space + 1;
+	}
+	if (end < hardEnd) {
+		const space = text.lastIndexOf(" ", end);
+		if (space > at + length) end = space;
+	}
+	const slice = text.slice(start, end);
+	const lead = slice.length - slice.trimStart().length;
+	const head = start > lineStart ? "\u2026" : "";
+	const tail = end < hardEnd ? "\u2026" : "";
+	return { preview: `${head}${slice.trim()}${tail}`, offset: at - start - lead + head.length };
+}
+
+/**
  * Find `query` in every entry of a session. Unlike the browser's own find, this covers
  * what the transcript does not show: abandoned branches and history a compaction replaced.
  */
@@ -86,16 +111,12 @@ export function searchEntries(
 		const at = haystack.indexOf(needle, from);
 		if (at === -1) continue;
 		from = at;
-		const lineStart = text.lastIndexOf("\n", at) + 1;
-		const start = Math.max(lineStart, at - PREVIEW_BEFORE);
-		const lineEnd = text.indexOf("\n", at);
-		const end = Math.min(lineEnd === -1 ? text.length : lineEnd, at + needle.length + PREVIEW_AFTER);
-		const preview = text.slice(start, end).trim();
+		const { preview, offset } = previewAround(text, at, needle.length);
 		matches.push({
 			entryId: entry.id,
 			role,
 			preview,
-			offset: at - start - (text.slice(start, end).length - text.slice(start, end).trimStart().length),
+			offset,
 			length: needle.length,
 			onActivePath: active.has(entry.id),
 			timestamp: entry.timestamp,
