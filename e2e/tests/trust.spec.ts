@@ -1,6 +1,6 @@
 import { mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, openApp } from "./helpers";
+import { collectErrors, composer, deleteSessionsOfProject, openApp, trustProject } from "./helpers";
 
 // A project that ships a skill of its own: pi asks before it loads project resources.
 // The host runs on this machine, so the test can create that project itself.
@@ -20,9 +20,17 @@ test.beforeAll(async ({ browser }) => {
 	page = await browser.newPage();
 	errors = collectErrors(page);
 	await openApp(page);
+	// The project path is reused between runs: an interrupted run could leave a decision
+	// behind, and then the banner under test would never appear.
+	await trustProject(page, PROJECT, null);
+	await deleteSessionsOfProject(page, PROJECT);
+	await page.reload();
+	await openApp(page);
 });
 
 test.afterAll(async () => {
+	await deleteSessionsOfProject(page, PROJECT);
+	await trustProject(page, PROJECT, null);
 	await page.close();
 	rmSync(PROJECT, { recursive: true, force: true });
 });

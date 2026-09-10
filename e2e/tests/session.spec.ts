@@ -1,12 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, openApp, sendPrompt, untilIdle } from "./helpers";
+import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, sendPrompt, untilIdle } from "./helpers";
 
 // One session and one page for the whole file: three LLM prompts in total.
 test.describe.configure({ mode: "serial" });
 
 let page: Page;
 let errors: string[];
-const SESSION_NAME = `tau e2e ${new Date().toISOString().slice(11, 19)}`;
+const SESSION_NAME = e2eSessionName("");
 
 test.beforeAll(async ({ browser }) => {
 	page = await browser.newPage();
@@ -15,6 +15,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async () => {
+	// A run must not leave sessions behind; the helper only deletes what this suite named.
+	await deleteE2eSessions(page);
 	await page.close();
 });
 

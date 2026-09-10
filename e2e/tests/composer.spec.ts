@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, openApp, queueMessages, toasts } from "./helpers";
+import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, queueMessages, toasts } from "./helpers";
 
 /**
  * The last interactive gaps against pi's terminal UI: `@` file mentions, the copy button of a
@@ -10,7 +10,7 @@ import { collectErrors, composer, openApp, queueMessages, toasts } from "./helpe
 test.describe.configure({ mode: "serial" });
 
 const SHOTS = "/srv/pi-tau/e2e/shots";
-const SESSION_NAME = `tau composer e2e ${new Date().toISOString().slice(11, 19)}`;
+const SESSION_NAME = e2eSessionName("composer");
 const PROTOCOL = "packages/shared/src/protocol.ts";
 
 let page: Page;
@@ -40,6 +40,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async () => {
+	// A run must not leave sessions behind; the helper only deletes what this suite named.
+	await deleteE2eSessions(page);
 	await page.close();
 });
 

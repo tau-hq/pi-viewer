@@ -1,4 +1,3 @@
-import { existsSync } from "node:fs";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 export const IDLE_PLACEHOLDER = /^Message pi/;
@@ -63,50 +62,165 @@ export async function openApp(page: Page): Promise<void> {
 }
 
 /**
- * Show the newest session of a project whose directory still exists. Sessions of deleted
- * projects stay listed, and a terminal cannot be opened in a directory that is gone.
- * The host runs on this machine, so the test can check the directories itself.
- */
-export async function openLiveProjectSession(page: Page): Promise<string> {
-	const groups = page.getByTestId("project-group");
-	const count = await groups.count();
-	for (let index = 0; index < count; index++) {
-		const group = groups.nth(index);
-		const cwd = await group.getAttribute("data-project-cwd");
-		if (!cwd || !existsSync(cwd)) continue;
-		const item = group.getByTestId("session-item").first();
-		if ((await item.count()) === 0) continue;
-		await item.click();
-		await expect(composer(page)).toBeVisible({ timeout: 30_000 });
-		await page.waitForTimeout(500);
-		return cwd;
-	}
-	throw new Error("no listed session has an existing project directory");
-}
-
-/**
  * Record a trust decision for a project. pi's own terminal UI stops at a trust question when a
  * directory ships `.pi` resources and has no decision yet, which no test can answer blindly.
  */
-export async function trustProject(page: Page, cwd: string): Promise<void> {
-	await page.evaluate(async (dir) => {
+export async function trustProject(page: Page, cwd: string, trusted: boolean | null = true): Promise<void> {
+	await page.evaluate(
+		async ({ dir, decision }) => {
+			const socket = new WebSocket(`ws://${location.host}/ws`);
+			await new Promise<void>((resolve, reject) => {
+				socket.onopen = () => resolve();
+				socket.onerror = () => reject(new Error("host socket failed"));
+			});
+			// TAU_PROTOCOL_VERSION; the host refuses a hello with another version.
+			socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+			await new Promise<void>((resolve) => {
+				socket.onmessage = (event) => {
+					const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string };
+					if (envelope.type === "result" && envelope.id === "trust") resolve();
+				};
+				socket.send(
+					JSON.stringify({ type: "cmd", id: "trust", command: { type: "trust.set", cwd: dir, trusted: decision } }),
+				);
+			});
+			socket.close();
+		},
+		{ dir: cwd, decision: trusted },
+	);
+}
+
+/**
+ * Name for a session this suite creates. The shape is the contract `deleteE2eSessions`
+ * matches on, so every spec must build its name with this helper.
+ */
+export function e2eSessionName(kind: string): string {
+	const time = new Date().toISOString().slice(11, 19);
+	return kind ? `tau ${kind} e2e ${time}` : `tau e2e ${time}`;
+}
+
+/**
+ * Delete every session this suite created, so a test run leaves the machine as it found it.
+ * Matches on the name only: a session the user wrote is never touched, whatever it contains.
+ */
+export async function deleteE2eSessions(page: Page): Promise<number> {
+	return page.evaluate(async () => {
 		const socket = new WebSocket(`ws://${location.host}/ws`);
 		await new Promise<void>((resolve, reject) => {
 			socket.onopen = () => resolve();
 			socket.onerror = () => reject(new Error("host socket failed"));
 		});
-		// TAU_PROTOCOL_VERSION; the host refuses a hello with another version.
+		let id = 0;
+		const pending = new Map<string, (data: unknown) => void>();
+		socket.onmessage = (event) => {
+			const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+			if (envelope.type !== "result" || !envelope.id) return;
+			pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+			pending.delete(envelope.id);
+		};
+		const send = (command: unknown): Promise<unknown> =>
+			new Promise((resolve) => {
+				const key = String(++id);
+				pending.set(key, resolve);
+				socket.send(JSON.stringify({ type: "cmd", id: key, command }));
+			});
 		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
-		await new Promise<void>((resolve) => {
-			socket.onmessage = (event) => {
-				const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string };
-				if (envelope.type === "result" && envelope.id === "trust") resolve();
-			};
-			socket.send(
-				JSON.stringify({ type: "cmd", id: "trust", command: { type: "trust.set", cwd: dir, trusted: true } }),
-			);
-		});
+		const sessions = ((await send({ type: "sessions.list" })) ?? []) as {
+			name?: string;
+			path: string;
+			handle?: string;
+			running: boolean;
+		}[];
+		let removed = 0;
+		for (const session of sessions) {
+			if (!/^tau (\w+ )?e2e \d{2}:\d{2}:\d{2}$/.test(session.name ?? "")) continue;
+			if (session.running && session.handle) await send({ type: "sessions.close", sessionId: session.handle });
+			if (!session.path.startsWith("pending:")) await send({ type: "sessions.delete", sessionPath: session.path });
+			removed++;
+		}
 		socket.close();
+		return removed;
+	});
+}
+
+/**
+ * Stop the processes of ephemeral sessions. They write no file, so nothing is left on disk,
+ * but their pi process would idle on until the host's timeout.
+ */
+export async function closeEphemeralSessions(page: Page): Promise<number> {
+	return page.evaluate(async () => {
+		const socket = new WebSocket(`ws://${location.host}/ws`);
+		await new Promise<void>((resolve, reject) => {
+			socket.onopen = () => resolve();
+			socket.onerror = () => reject(new Error("host socket failed"));
+		});
+		let id = 0;
+		const pending = new Map<string, (data: unknown) => void>();
+		socket.onmessage = (event) => {
+			const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+			if (envelope.type !== "result" || !envelope.id) return;
+			pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+			pending.delete(envelope.id);
+		};
+		const send = (command: unknown): Promise<unknown> =>
+			new Promise((resolve) => {
+				const key = String(++id);
+				pending.set(key, resolve);
+				socket.send(JSON.stringify({ type: "cmd", id: key, command }));
+			});
+		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+		const sessions = ((await send({ type: "sessions.list" })) ?? []) as {
+			ephemeral?: boolean;
+			handle?: string;
+			running: boolean;
+		}[];
+		let closed = 0;
+		for (const session of sessions) {
+			if (!session.ephemeral || !session.running || !session.handle) continue;
+			await send({ type: "sessions.close", sessionId: session.handle });
+			closed++;
+		}
+		socket.close();
+		return closed;
+	});
+}
+
+/** Delete every session of one project directory. For specs that create their own project. */
+export async function deleteSessionsOfProject(page: Page, cwd: string): Promise<number> {
+	return page.evaluate(async (dir) => {
+		const socket = new WebSocket(`ws://${location.host}/ws`);
+		await new Promise<void>((resolve, reject) => {
+			socket.onopen = () => resolve();
+			socket.onerror = () => reject(new Error("host socket failed"));
+		});
+		let id = 0;
+		const pending = new Map<string, (data: unknown) => void>();
+		socket.onmessage = (event) => {
+			const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+			if (envelope.type !== "result" || !envelope.id) return;
+			pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+			pending.delete(envelope.id);
+		};
+		const send = (command: unknown): Promise<unknown> =>
+			new Promise((resolve) => {
+				const key = String(++id);
+				pending.set(key, resolve);
+				socket.send(JSON.stringify({ type: "cmd", id: key, command }));
+			});
+		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+		const sessions = ((await send({ type: "sessions.list", cwd: dir })) ?? []) as {
+			path: string;
+			handle?: string;
+			running: boolean;
+		}[];
+		let removed = 0;
+		for (const session of sessions) {
+			if (session.running && session.handle) await send({ type: "sessions.close", sessionId: session.handle });
+			if (!session.path.startsWith("pending:")) await send({ type: "sessions.delete", sessionPath: session.path });
+			removed++;
+		}
+		socket.close();
+		return removed;
 	}, cwd);
 }
 

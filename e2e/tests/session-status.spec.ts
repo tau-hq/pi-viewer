@@ -1,6 +1,6 @@
 import type { SessionSummary } from "@pi-tau/shared";
 import { type Browser, expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, openApp } from "./helpers";
+import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp } from "./helpers";
 
 /**
  * The five-state circle left of a session name.
@@ -13,7 +13,7 @@ import { collectErrors, composer, openApp } from "./helpers";
 test.describe.configure({ mode: "serial" });
 
 const SHOTS = "/srv/pi-tau/e2e/shots";
-const SESSION_NAME = `tau status e2e ${new Date().toISOString().slice(11, 19)}`;
+const SESSION_NAME = e2eSessionName("status");
 
 let page: Page;
 let errors: string[];
@@ -30,6 +30,8 @@ test.beforeAll(async ({ browser }) => {
 });
 
 test.afterAll(async () => {
+	// A run must not leave sessions behind; the helper only deletes what this suite named.
+	await deleteE2eSessions(page);
 	await page.close();
 });
 

@@ -2,8 +2,10 @@ import { expect, type Page, test } from "@playwright/test";
 import {
 	closeHostTerminals,
 	collectErrors,
+	composer,
+	deleteE2eSessions,
+	e2eSessionName,
 	openApp,
-	openLiveProjectSession,
 	terminalRows,
 	terminalType,
 	trustProject,
@@ -15,17 +17,33 @@ test.describe.configure({ mode: "serial" });
 let page: Page;
 let errors: string[];
 
+// The terminals need a session so the dock knows a working directory; the spec creates its
+// own instead of borrowing one, so it does not depend on what the machine happens to hold.
+const PROJECT = "/srv/pi-tau";
+const SESSION_NAME = e2eSessionName("terminal");
+
 test.beforeAll(async ({ browser }) => {
 	page = await browser.newPage();
 	errors = collectErrors(page);
 	await openApp(page);
 	await closeHostTerminals(page);
 	// pi's terminal UI stops at a trust question in a project that ships .pi resources.
-	await trustProject(page, await openLiveProjectSession(page));
+	await trustProject(page, PROJECT);
+	await page
+		.getByRole("button", { name: /New session/ })
+		.first()
+		.click();
+	await page.getByLabel("Working directory").fill(PROJECT);
+	await page.getByRole("button", { name: "Create", exact: true }).click();
+	await expect(composer(page)).toBeVisible({ timeout: 30_000 });
+	await composer(page).fill(`/name ${SESSION_NAME}`);
+	await composer(page).press("Enter");
+	await expect(page.locator("header").getByText(SESSION_NAME)).toBeVisible();
 });
 
 test.afterAll(async () => {
 	await closeHostTerminals(page).catch(() => undefined);
+	await deleteE2eSessions(page).catch(() => undefined);
 	await page.close();
 });
 
