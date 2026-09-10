@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { TAU_REPLY_KEY } from "@pi-tau/pi-extension";
 import type {
 	ApprovalMode,
 	AssistantMessage,
@@ -425,7 +426,23 @@ export class TauSession extends EventEmitter {
 		}
 	}
 
-	/** Invoke a Tau extension command and wait for its reply entry (customType) carrying the same requestId. */
+	/** Resolve the waiter for a reply the Tau extension sent through its reserved status key. */
+	private resolveExtensionReply(payload: string): void {
+		let data: { channel?: string; requestId?: string };
+		try {
+			data = JSON.parse(payload) as typeof data;
+		} catch {
+			log.warn("extension reply is not JSON");
+			return;
+		}
+		const waiter = data.requestId ? this.entryWaiters.get(data.requestId) : undefined;
+		if (!waiter) return;
+		clearTimeout(waiter.timer);
+		this.entryWaiters.delete(data.requestId as string);
+		waiter.resolve(data);
+	}
+
+	/** Invoke a Tau extension command and wait for its reply on the reserved status key. */
 	async extensionCall(command: string, replyType: string, args: string, timeoutMs = 20_000): Promise<unknown> {
 		const requestId = randomUUID();
 		const reply = new Promise<unknown>((resolve, reject) => {
@@ -664,16 +681,9 @@ export class TauSession extends EventEmitter {
 				return;
 			case "entry_appended": {
 				const entry = (event as { entry: PiEntry }).entry;
-				if (entry.type === "custom" && typeof entry.customType === "string" && entry.customType.startsWith("tau.")) {
-					const data = (entry.data ?? {}) as { requestId?: string };
-					const waiter = data.requestId ? this.entryWaiters.get(data.requestId) : undefined;
-					if (waiter) {
-						clearTimeout(waiter.timer);
-						this.entryWaiters.delete(data.requestId as string);
-						waiter.resolve(entry.data);
-					}
-					return; // Tau bookkeeping entries are never shown
-				}
+				// Sessions written by older Tau versions still carry these bookkeeping entries.
+				if (entry.type === "custom" && typeof entry.customType === "string" && entry.customType.startsWith("tau."))
+					return;
 				this.queueRebuild();
 				return;
 			}
@@ -829,6 +839,11 @@ export class TauSession extends EventEmitter {
 				this.push({ type: "notify", message: request.message, level: request.notifyType ?? "info" });
 				return;
 			case "setStatus": {
+				// Tau's extension answers through this reserved key instead of writing an entry.
+				if (request.statusKey === TAU_REPLY_KEY) {
+					if (request.statusText) this.resolveExtensionReply(request.statusText);
+					return;
+				}
 				if (request.statusText === undefined || request.statusText === "") this.statuses.delete(request.statusKey);
 				else this.statuses.set(request.statusKey, request.statusText);
 				const out: SessionEvent = { type: "status.set", key: request.statusKey };
