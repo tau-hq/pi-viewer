@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
-import { existsSync } from "node:fs";
+import { existsSync, statSync } from "node:fs";
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { basename, dirname, join, resolve } from "node:path";
 import type {
@@ -244,10 +244,12 @@ export class SessionRegistry extends EventEmitter {
 		for (const summary of filtered) {
 			const live = byFile.get(resolve(summary.path));
 			known.add(resolve(summary.path));
+			// pi dates a session by its last entry, so a clone or fork inherits the origin's date
+			// and would be buried in the list; the file's own mtime says when the copy was written.
+			// The same rule has to apply whether or not a process is attached, otherwise merely
+			// opening a session would change its position.
+			const modified = Math.max(summary.modified, fileMtime(summary.path));
 			if (live) {
-				// A freshly written file (fork/clone) inherits the origin's timestamps, which would
-				// bury it in the list; the live session's start time is what users expect to see.
-				const modified = Math.max(summary.modified, live.startedAt);
 				out.push({
 					...summary,
 					running: live.alive,
@@ -256,7 +258,7 @@ export class SessionRegistry extends EventEmitter {
 					modified,
 					cwdExists: cwdExists(summary.cwd),
 				});
-			} else out.push({ ...summary, cwdExists: cwdExists(summary.cwd) });
+			} else out.push({ ...summary, modified, cwdExists: cwdExists(summary.cwd) });
 		}
 		// Sessions whose file pi has not written yet (no assistant message so far).
 		for (const s of this.sessions.values()) {
@@ -273,7 +275,9 @@ export class SessionRegistry extends EventEmitter {
 				path: s.sessionFile ?? `pending:${s.handle}`,
 				cwd: s.cwd,
 				created: s.startedAt,
-				modified: Date.now(),
+				// No file yet, so the session is as old as its process; Date.now() here would
+				// make the entry jump on every refresh.
+				modified: s.startedAt,
 				messageCount: snap.messages.length,
 				firstMessage: firstText.slice(0, 200),
 				running: s.alive,
@@ -501,6 +505,15 @@ function startupArgs(options: SessionCreateOptions): string[] {
 	if (options.ephemeral) args.push("--no-session");
 	if (options.thinkingLevel) args.push("--thinking", options.thinkingLevel);
 	return args;
+}
+
+/** File mtime in milliseconds, 0 when the file is gone. */
+function fileMtime(path: string): number {
+	try {
+		return statSync(path).mtimeMs;
+	} catch {
+		return 0;
+	}
 }
 
 async function listDirs(path: string): Promise<{ path: string; dirs: string[] }> {

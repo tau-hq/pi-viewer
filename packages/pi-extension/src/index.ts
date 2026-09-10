@@ -35,6 +35,19 @@ const DANGEROUS_PATTERNS: RegExp[] = [
 	/\btruncate\b.*\s-s\s*0/,
 ];
 
+/**
+ * Reserved status key used as a side channel back to the Tau host. `appendEntry` would
+ * write into the session file, which would date the session on every open; a status
+ * entry is fire-and-forget and touches nothing on disk. The host consumes this key and
+ * never shows it.
+ */
+export const TAU_REPLY_KEY = "tau.reply";
+
+function reply(ctx: { ui: { setStatus(key: string, text: string | undefined): void } }, payload: unknown): void {
+	ctx.ui.setStatus(TAU_REPLY_KEY, JSON.stringify(payload));
+	ctx.ui.setStatus(TAU_REPLY_KEY, undefined);
+}
+
 export const APPROVAL_TITLE_PREFIX = "Tau approval";
 export const OPTION_ALLOW_ONCE = "Allow once";
 export const OPTION_DENY = "Deny";
@@ -117,7 +130,7 @@ export default function tauExtension(pi: ExtensionAPI): void {
 			} else if (wanted) {
 				ctx.ui.notify(`Unknown approval mode: ${wanted}`, "warning");
 			}
-			pi.appendEntry("tau.approval", { requestId: requestId ?? "", mode });
+			reply(ctx, { channel: "tau.approval", requestId: requestId ?? "", mode });
 		},
 	});
 
@@ -150,7 +163,7 @@ export default function tauExtension(pi: ExtensionAPI): void {
 			const all = pi
 				.getAllTools()
 				.map((tool) => ({ name: tool.name, description: tool.description, active: activeSet.has(tool.name) }));
-			pi.appendEntry("tau.tools", { requestId, tools: all, active });
+			reply(ctx, { channel: "tau.tools", requestId, tools: all, active });
 		},
 	});
 }

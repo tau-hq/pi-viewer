@@ -39,6 +39,8 @@ export function SessionItem({
 }: SessionItemProps) {
 	const liveStreaming = useSessionStore((s) => s.views[session.id]?.state.isStreaming ?? false);
 	const liveAlive = useSessionStore((s) => s.views[session.id]?.state.processAlive);
+	// Only work in progress earns a marker in the row. Whether a pi process happens to be
+	// attached is bookkeeping; it stays in the menu, which offers "Stop process" for it.
 	const streaming = liveStreaming || session.isStreaming;
 	const running = liveAlive ?? session.running;
 
@@ -60,14 +62,9 @@ export function SessionItem({
 			>
 				<span
 					aria-hidden
-					className={cn(
-						"size-1.5 shrink-0 rounded-full",
-						streaming ? "animate-glow bg-primary" : running ? "bg-success" : "bg-transparent",
-					)}
+					className={cn("size-1.5 shrink-0 rounded-full", streaming ? "animate-glow bg-primary" : "bg-transparent")}
 				/>
-				{(streaming || running) && (
-					<span className="sr-only">{streaming ? t("sidebar.streaming") : t("sidebar.running")}</span>
-				)}
+				{streaming && <span className="sr-only">{t("sidebar.streaming")}</span>}
 				<span className="min-w-0 flex-1 truncate">{sessionLabel(session)}</span>
 				<span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">
 					{relativeTime(session.modified)}
