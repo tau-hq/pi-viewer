@@ -255,8 +255,9 @@ test("scoped models list the catalog and save through settings.patch", async () 
 });
 
 test("the model picker refreshes the catalog", async () => {
+	// The model picker sits in the composer, next to the approval mode.
 	await page
-		.locator("header")
+		.getByTestId("composer-tools")
 		.getByRole("button", { name: /GLM|Model|No model/ })
 		.first()
 		.click();

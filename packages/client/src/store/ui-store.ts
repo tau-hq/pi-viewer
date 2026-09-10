@@ -98,6 +98,17 @@ interface UiStoreState {
 	seen: SeenMap;
 	/** Remember that the session was looked at in this state. Older marks are ignored. */
 	markSeen: (sessionId: string, modified: number) => void;
+	/**
+	 * Session search in the header. The nonce rises on every open request so pressing the
+	 * shortcut again puts the caret back into a field that is already showing.
+	 */
+	searchOpen: boolean;
+	searchNonce: number;
+	openSearch: () => void;
+	closeSearch: () => void;
+	/** Entry the transcript should scroll to and flash; the nonce allows the same one twice. */
+	reveal: { sessionId: string; entryId: string; nonce: number } | undefined;
+	revealEntry: (sessionId: string, entryId: string) => void;
 	/** Sidebar groups folded shut, by group key; persisted, so a fold survives a reload. */
 	collapsedGroups: Record<string, true>;
 	toggleGroupCollapsed: (key: string) => void;
@@ -152,6 +163,13 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 			writeSeen(seen);
 			return { seen };
 		}),
+	searchOpen: false,
+	searchNonce: 0,
+	openSearch: () => set((s) => ({ searchOpen: true, searchNonce: s.searchNonce + 1 })),
+	closeSearch: () => set({ searchOpen: false }),
+	reveal: undefined,
+	revealEntry: (sessionId, entryId) =>
+		set((s) => ({ reveal: { sessionId, entryId, nonce: (s.reveal?.nonce ?? 0) + 1 } })),
 	collapsedGroups: initialCollapsed(),
 	toggleGroupCollapsed: (key) =>
 		set((s) => {

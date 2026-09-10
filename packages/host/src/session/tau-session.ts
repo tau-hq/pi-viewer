@@ -35,6 +35,7 @@ import type {
 	PiTreeNode,
 } from "../pi/rpc-types.js";
 import { autoRetryEnabled } from "../pi-sdk.js";
+import { searchEntries } from "./search.js";
 import {
 	entriesToTranscript,
 	toForkMessages,
@@ -374,6 +375,15 @@ export class TauSession extends EventEmitter {
 					type: "get_fork_messages",
 				});
 				return toForkMessages(data.messages, this.entriesCache);
+			}
+			case "search": {
+				// Always from pi, so a search covers what has happened since the last rebuild.
+				const data = await this.rpc.request<{ entries: PiEntry[]; leafId: string | null }>(
+					{ type: "get_entries" },
+					25_000,
+				);
+				this.entriesCache = data.entries;
+				return searchEntries(data.entries, data.leafId, command.query, command.limit);
 			}
 			case "getTree": {
 				const data = await this.rpc.request<{ tree: PiTreeNode[]; leafId: string | null }>({ type: "get_tree" });

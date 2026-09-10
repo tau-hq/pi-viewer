@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
 import { APPROVAL_MODE_TEXT } from "../composer/approval-modes";
-import { approvalModeClass } from "../composer/ModeMenu";
 import { contextColor } from "../header/StatsPopover";
 import { Spinner } from "../ui/spinner";
 
@@ -77,7 +76,7 @@ export function StatusBar({ sessionId }: { sessionId: string }) {
 			</Item>
 			{model?.reasoning && thinkingLevel && <Item>· {thinkingLevel}</Item>}
 			{approvalMode && (
-				<Item className={cn(approvalModeClass(approvalMode))} title={t("mode.title")}>
+				<Item title={t("mode.title")}>
 					<span data-testid="status-mode">{t(APPROVAL_MODE_TEXT[approvalMode].title)}</span>
 				</Item>
 			)}

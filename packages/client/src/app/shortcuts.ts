@@ -95,6 +95,16 @@ export const SHORTCUTS: readonly ShortcutSpec[] = [
 		run: () => useTerminalStore.getState().toggle(),
 	},
 	{
+		id: "sessionSearch",
+		group: "global",
+		keys: "Ctrl/⌘+F",
+		description: "hotkeys.sessionSearch",
+		// Deliberately shadows the browser's own find: that one cannot see abandoned branches
+		// or history a compaction replaced, and it stops at what the virtual list has rendered.
+		match: (event) => mod(event) && !event.shiftKey && event.key.toLowerCase() === "f" && !dialogIsOpen(),
+		run: () => useUiStore.getState().openSearch(),
+	},
+	{
 		id: "hotkeys",
 		group: "global",
 		keys: "?",

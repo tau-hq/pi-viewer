@@ -110,6 +110,29 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 		return () => cancelAnimationFrame(handle);
 	}, [scrollToBottom]);
 
+	// A search hit scrolls the row into the middle and marks it briefly; the row may still be
+	// unmeasured, so the scroll is repeated for a few frames while the estimate settles.
+	const reveal = useUiStore((s) => (s.reveal?.sessionId === sessionId ? s.reveal : undefined));
+	const [flashKey, setFlashKey] = useState<string | undefined>(undefined);
+	useEffect(() => {
+		if (!reveal) return;
+		const index = rows.findIndex((row) => row.kind === "message" && row.message.id === reveal.entryId);
+		if (index === -1) return;
+		atBottomRef.current = false;
+		setAtBottom(false);
+		setFlashKey(rows[index]?.key);
+		let frames = 0;
+		let handle = requestAnimationFrame(function step() {
+			virtualizer.scrollToIndex(index, { align: "center" });
+			if (++frames < 8) handle = requestAnimationFrame(step);
+		});
+		const clear = setTimeout(() => setFlashKey(undefined), 2200);
+		return () => {
+			cancelAnimationFrame(handle);
+			clearTimeout(clear);
+		};
+	}, [reveal, rows, virtualizer]);
+
 	const items = virtualizer.getVirtualItems();
 
 	return (
@@ -129,7 +152,10 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 									key={item.key}
 									data-index={item.index}
 									ref={virtualizer.measureElement}
-									className="absolute top-0 left-0 w-full px-4 py-2"
+									className={cn(
+										"absolute top-0 left-0 w-full px-4 py-2",
+										flashKey === row.key && "rounded-xl ring-2 ring-ring/60 transition-shadow duration-500",
+									)}
 									style={{ transform: `translateY(${item.start}px)` }}
 								>
 									<RowView sessionId={sessionId} row={row} />
