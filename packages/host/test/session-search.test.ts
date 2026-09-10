@@ -59,6 +59,22 @@ describe("searchEntries", () => {
 		expect(truncated).toBe(true);
 	});
 
+	it("cuts a long line on word boundaries and says so with an ellipsis", () => {
+		const long: PiEntry = userEntry(
+			"f",
+			null,
+			`${"filler word ".repeat(20)}the needle sits here${" trailing word".repeat(30)}`,
+		);
+		const [match] = searchEntries([long], "f", "needle").matches;
+		expect(match).toBeDefined();
+		if (!match) return;
+		expect(match.preview.startsWith("\u2026")).toBe(true);
+		expect(match.preview.endsWith("\u2026")).toBe(true);
+		// No half word at either cut, and the marked range is still the hit itself.
+		expect(match.preview.slice(1, 2)).not.toBe(" ");
+		expect(match.preview.slice(match.offset, match.offset + match.length)).toBe("needle");
+	});
+
 	it("returns nothing for an empty query", () => {
 		expect(searchEntries(entries, "d", "   ").matches).toEqual([]);
 	});
