@@ -1,5 +1,5 @@
 import type { MessageRole, SearchMatch } from "@pi-tau/shared";
-import { GitBranch, History, Loader2, Search, X } from "lucide-react";
+import { ChevronDown, ChevronUp, GitBranch, History, Loader2, Search, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { type TKey, t } from "@/i18n";
 import { asRecord, pickArray } from "@/lib/result-data";
@@ -9,7 +9,8 @@ import { useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
 
 const DEBOUNCE_MS = 180;
-const LIMIT = 60;
+// High enough that the counter next to the field is the real number of hits, not a cap.
+const LIMIT = 500;
 
 const ROLE_LABEL: Partial<Record<MessageRole | "other", TKey>> = {
 	user: "search.roleUser",
@@ -58,6 +59,8 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	const [truncated, setTruncated] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [active, setActive] = useState(0);
+	/** False until the user has stepped once, so the first step goes to hit one, not to two. */
+	const [visited, setVisited] = useState(false);
 	const [ran, setRan] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
 
@@ -88,6 +91,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 					setMatches(pickArray<unknown>(data, "matches").filter(isMatch));
 					setTruncated(asRecord(data)?.truncated === true);
 					setActive(0);
+					setVisited(false);
 					setRan(true);
 				})
 				.catch((error: unknown) => {
@@ -111,6 +115,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 		closeSearch();
 		setMatches([]);
 		setRan(false);
+		setVisited(false);
 	};
 
 	/**
@@ -139,23 +144,32 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 			.catch((error: unknown) => toast("error", error instanceof Error ? error.message : String(error)));
 	};
 
+	/**
+	 * Walk the hits the way a find bar does: one step forward or back, wrapping at both ends,
+	 * and the transcript scrolls to the hit if it is on the branch being shown. Stepping never
+	 * moves the session to another branch - that needs the deliberate click on the row.
+	 */
+	const step = (delta: number) => {
+		if (matches.length === 0) return;
+		const next = visited ? (active + delta + matches.length) % matches.length : delta > 0 ? 0 : matches.length - 1;
+		setActive(next);
+		setVisited(true);
+		const match = matches[next];
+		if (!match) return;
+		const view = useSessionStore.getState().views[sessionId];
+		if (view?.messages.some((message) => message.id === match.entryId)) revealEntry(sessionId, match.entryId);
+	};
+
 	const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
 		if (event.key === "Escape") {
 			event.preventDefault();
 			close();
-		} else if (event.key === "ArrowDown") {
+		} else if (event.key === "ArrowDown" || event.key === "Enter") {
 			event.preventDefault();
-			setActive((index) => Math.min(matches.length - 1, index + 1));
+			step(1);
 		} else if (event.key === "ArrowUp") {
 			event.preventDefault();
-			setActive((index) => Math.max(0, index - 1));
-		} else if (event.key === "Enter") {
-			event.preventDefault();
-			const match = matches[active];
-			if (!match) return;
-			jump(match);
-			// Wrap around, so the last hit leads back to the first instead of standing still.
-			setActive((index) => (index + 1) % matches.length);
+			step(-1);
 		}
 	};
 
@@ -164,7 +178,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 			data-testid="header-search"
 			className={cn(
 				"relative flex h-8 shrink-0 items-center transition-[width] duration-200 ease-out",
-				open ? "w-44 md:w-72" : "w-8",
+				open ? "w-44 md:w-[22rem]" : "w-8",
 			)}
 		>
 			<button
@@ -197,9 +211,39 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 					// deliberately not part of the transition, or the shortcut would try to focus a
 					// field that is still hidden for the first half of the fade.
 					"h-8 w-full rounded-md border border-input bg-background pr-8 pl-8 text-sm outline-none transition-opacity duration-150 placeholder:text-muted-foreground focus-visible:border-ring",
+					matches.length > 0 && "md:pr-28",
 					open ? "visible opacity-100" : "invisible pointer-events-none opacity-0",
 				)}
 			/>
+			{open && matches.length > 0 && (
+				// Never a focus change: the caret has to stay in the field while the hits are walked.
+				<div className="absolute right-8 flex items-center gap-0.5 max-md:hidden">
+					<span data-testid="search-count" className="px-1 text-[11px] text-muted-foreground tabular-nums">
+						{active + 1}/{matches.length}
+						{truncated ? "+" : ""}
+					</span>
+					<button
+						type="button"
+						aria-label={t("search.previous")}
+						data-testid="search-previous"
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => step(-1)}
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+					>
+						<ChevronUp className="size-3.5" />
+					</button>
+					<button
+						type="button"
+						aria-label={t("search.next")}
+						data-testid="search-next"
+						onMouseDown={(event) => event.preventDefault()}
+						onClick={() => step(1)}
+						className="flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+					>
+						<ChevronDown className="size-3.5" />
+					</button>
+				</div>
+			)}
 			{open && (
 				<button
 					type="button"
