@@ -12,6 +12,7 @@ import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
+import { Spinner } from "../ui/spinner";
 import { HeaderMenu } from "./HeaderMenu";
 import { SearchBox } from "./SearchBox";
 import { SessionNameEditor } from "./SessionNameEditor";
@@ -20,6 +21,7 @@ import { StatsPopover } from "./StatsPopover";
 export function SessionHeader({ sessionId }: { sessionId: string }) {
 	const cwd = useSessionStore((s) => s.views[sessionId]?.state.cwd ?? "");
 	const alive = useSessionStore((s) => s.views[sessionId]?.state.processAlive ?? false);
+	const attaching = useSessionStore((s) => s.views[sessionId]?.attaching ?? false);
 	const home = useConnectionStore((s) => s.host?.homeCwd);
 	const openDialog = useUiStore((s) => s.openDialog);
 	const summary = useSessionsStore((s) => s.sessions.find((session) => session.id === sessionId));
@@ -38,7 +40,13 @@ export function SessionHeader({ sessionId }: { sessionId: string }) {
 						<span className="truncate">{shortenPath(cwd, home)}</span>
 					</Badge>
 				)}
-				{!alive && (
+				{attaching && (
+					<span className="flex items-center gap-1.5 text-muted-foreground text-xs max-md:hidden">
+						<Spinner className="size-3" />
+						{t("header.attaching")}
+					</span>
+				)}
+				{!alive && !attaching && (
 					<>
 						<Badge variant="warning" className="max-md:hidden">
 							{t("header.processDead")}

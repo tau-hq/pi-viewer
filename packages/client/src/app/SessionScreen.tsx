@@ -33,7 +33,12 @@ function DocumentTitle({ sessionId }: { sessionId: string }) {
 }
 
 export function SessionScreen({ sessionId }: { sessionId: string }) {
-	const loaded = useSessionStore((s) => s.views[sessionId]?.loaded ?? false);
+	// `attaching` means the file's conversation is already on screen; only a session with
+	// nothing at all to show waits for the spinner.
+	const loaded = useSessionStore((s) => {
+		const view = s.views[sessionId];
+		return (view?.loaded ?? false) || (view?.attaching ?? false);
+	});
 	const pendingUi = useSessionStore((s) => s.views[sessionId]?.pendingUi[0]);
 	const sessionCwd = useSessionStore((s) => s.views[sessionId]?.state.cwd);
 	const defaultCwd = useConnectionStore((s) => s.host?.defaultCwd);
