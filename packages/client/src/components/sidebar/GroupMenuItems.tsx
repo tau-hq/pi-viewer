@@ -1,4 +1,4 @@
-import { ArrowDown, ArrowUp, FolderPlus, Pencil, Plus, Trash } from "lucide-react";
+import { ArrowDown, ArrowUp, FolderPlus, Pencil, Plus, RotateCcw, Trash } from "lucide-react";
 import { t } from "@/i18n";
 import { useGroupsStore } from "@/store/groups-store";
 import type { GroupActions } from "./actions";
@@ -14,8 +14,8 @@ interface GroupMenuItemsProps {
 }
 
 /**
- * What a group header offers. A project group is not the user's to rename, reorder or delete,
- * so it only offers the two items that create something.
+ * What a group header offers. Every header can be renamed; a project group is not the user's
+ * to reorder or delete, and it can drop its name to show the folder name again.
  */
 export function GroupMenuItems({ menu, group, actions, onStartRename }: GroupMenuItemsProps) {
 	const groups = useGroupsStore((s) => s.groups);
@@ -25,9 +25,12 @@ export function GroupMenuItems({ menu, group, actions, onStartRename }: GroupMen
 			<menu.Item onSelect={() => actions.onNewSession(group)}>
 				<Plus /> {t("groups.newSession")}
 			</menu.Item>
-			{id !== undefined && (
-				<menu.Item onSelect={onStartRename}>
-					<Pencil /> {t("groups.rename")}
+			<menu.Item onSelect={onStartRename}>
+				<Pencil /> {t("groups.rename")}
+			</menu.Item>
+			{group.named === true && (
+				<menu.Item onSelect={() => actions.onResetGroupName(group)}>
+					<RotateCcw /> {t("groups.resetName")}
 				</menu.Item>
 			)}
 			<menu.Item onSelect={() => actions.onNewGroup()}>

@@ -51,6 +51,7 @@ export const en = {
 		createTitle: "New group",
 		namePlaceholder: "Group name",
 		rename: "Rename group",
+		resetName: "Use the folder name",
 		renameHint: "Enter saves, Esc keeps the old name",
 		delete: "Delete group",
 		deleteTitle: "Delete this group?",

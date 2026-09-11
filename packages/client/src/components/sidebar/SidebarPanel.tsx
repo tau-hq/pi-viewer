@@ -43,6 +43,7 @@ export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 	const currentSessionId = useSessionsStore((s) => s.currentSessionId);
 	const activeSessionFile = useActiveSessionFile();
 	const userGroups = useGroupsStore((s) => s.groups);
+	const projectNames = useGroupsStore((s) => s.projectNames);
 	const defaultCwd = useConnectionStore((s) => s.host?.defaultCwd ?? "");
 	const store = useSessionsStore.getState;
 	const groupStore = useGroupsStore.getState;
@@ -52,8 +53,8 @@ export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 	const [dropKey, setDropKey] = useState<string | undefined>(undefined);
 
 	const groups = useMemo(
-		() => buildSidebarGroups(userGroups, projects, sessions, query.trim()),
-		[userGroups, projects, sessions, query],
+		() => buildSidebarGroups(userGroups, projectNames, projects, sessions, query.trim()),
+		[userGroups, projectNames, projects, sessions, query],
 	);
 	const drawer = variant === "drawer";
 	const afterNavigate = () => {
@@ -109,6 +110,10 @@ export function SidebarPanel({ variant, onClose }: SidebarPanelProps) {
 		onNewGroup: () => setPrompt({ kind: "newGroup" }),
 		onRenameGroup: (group, name) => {
 			if (group.groupId !== undefined) void groupStore().renameGroup(group.groupId, name);
+			else if (group.cwd !== undefined) void groupStore().renameProject(group.cwd, name);
+		},
+		onResetGroupName: (group) => {
+			if (group.cwd !== undefined) void groupStore().renameProject(group.cwd, null);
 		},
 		onMoveGroup: (group, direction) => {
 			if (group.groupId !== undefined) void groupStore().moveGroup(group.groupId, direction);

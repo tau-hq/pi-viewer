@@ -11,6 +11,7 @@ import {
 	E2E_GROUP_PREFIX,
 	e2eSessionName,
 	openApp,
+	resetProjectName,
 } from "./helpers";
 
 /**
@@ -30,6 +31,7 @@ const SECOND_SESSION = e2eSessionName("newsession");
 const GROUP_A = `${E2E_GROUP_PREFIX} A`;
 const GROUP_B = `${E2E_GROUP_PREFIX} B`;
 const GROUP_RENAMED = `${E2E_GROUP_PREFIX} A renamed`;
+const PROJECT_NAME = "tau e2e project name";
 
 let page: Page;
 let errors: string[];
@@ -188,16 +190,18 @@ test.afterAll(async () => {
 	// Only this suite's own sessions and its own groups; the machine's stay untouched.
 	await deleteE2eSessions(page);
 	await deleteE2eGroups(page);
+	// Whatever happened above, the project shows its folder name again.
+	await resetProjectName(page, CWD);
 	await page.close();
 });
 
 test("a project header and the empty space below the list both make a group", async () => {
 	await importSession(SESSION_NAME);
 
-	// The project header offers what a project can offer: a session and a group.
+	// The project header offers what a project can offer: a session, a name and a group.
 	const projectMenu = await openMenu(projectGroup().getByTestId("group-header").first(), "group-context-menu");
 	await expect(projectMenu.getByRole("menuitem", { name: "New session here" })).toBeVisible();
-	await expect(projectMenu.getByRole("menuitem", { name: "Rename group" })).toHaveCount(0);
+	await expect(projectMenu.getByRole("menuitem", { name: "Rename group" })).toBeVisible();
 	await expect(projectMenu.getByRole("menuitem", { name: "Delete group" })).toHaveCount(0);
 	await createGroup(GROUP_A);
 
@@ -360,6 +364,38 @@ test("a group is renamed in its header and moved with its own menu", async () =>
 	await page.reload({ waitUntil: "networkidle" });
 	await expect(page.getByRole("button", { name: /New session/ }).first()).toBeVisible();
 	expect(await order()).toBe(renamedFirst);
+	expect(errors).toEqual([]);
+});
+
+test("a project header is renamed too, and can take its folder name back", async () => {
+	const menu = await openMenu(projectGroup().getByTestId("group-header"), "group-context-menu");
+	// A project group is not the user's to reorder or delete, but it is theirs to name.
+	await expect(menu.getByRole("menuitem", { name: "Rename group" })).toBeVisible();
+	await expect(menu.getByRole("menuitem", { name: "Move down" })).toHaveCount(0);
+	await expect(menu.getByRole("menuitem", { name: "Delete group" })).toHaveCount(0);
+	await expect(menu.getByRole("menuitem", { name: "Use the folder name" })).toHaveCount(0);
+
+	await menu.getByRole("menuitem", { name: "Rename group" }).click();
+	const input = page.getByTestId("group-name-input");
+	await expect(input).toBeVisible();
+	await input.fill(PROJECT_NAME);
+	await input.press("Enter");
+	const header = projectGroup().getByTestId("group-header");
+	await expect(header).toContainText(PROJECT_NAME);
+	await page.screenshot({ path: `${SHOTS}/134-groups-project-renamed.png`, animations: "disabled" });
+
+	// The name lives on the host, against the directory, so another page load shows it.
+	await page.reload({ waitUntil: "networkidle" });
+	await expect(page.getByRole("button", { name: /New session/ }).first()).toBeVisible();
+	await expect(projectGroup().getByTestId("group-header")).toContainText(PROJECT_NAME);
+
+	// Only a project that carries a name of its own offers to drop it again.
+	const named = await openMenu(projectGroup().getByTestId("group-header"), "group-context-menu");
+	await named.getByRole("menuitem", { name: "Use the folder name" }).click();
+	await expect(projectGroup().getByTestId("group-header")).toContainText("pi-tau");
+	await page.reload({ waitUntil: "networkidle" });
+	await expect(page.getByRole("button", { name: /New session/ }).first()).toBeVisible();
+	await expect(projectGroup().getByTestId("group-header")).toContainText("pi-tau");
 	expect(errors).toEqual([]);
 });
 
