@@ -114,8 +114,15 @@ test("the export button downloads the HTML and leaves nothing on the host", asyn
 	for await (const chunk of stream) chunks.push(Buffer.from(chunk));
 	const html = Buffer.concat(chunks).toString("utf8");
 	expect(html).toContain("<!DOCTYPE html>");
-	// The export used to be written into the session's working directory and stay there.
-	await expect(toasts(page)).toContainText("downloaded");
+	// The browser announces its own downloads, so the interface adds nothing to it. Counting
+	// rather than negating text: the toast region is not rendered at all when it is empty.
+	await expect(toasts(page).filter({ hasText: "downloaded" })).toHaveCount(0);
+
+	// A second click within the cooldown starts nothing, and the button gives no sign of it.
+	const again = page.waitForEvent("download", { timeout: 3_000 }).catch(() => undefined);
+	await page.getByRole("button", { name: "Export HTML" }).click();
+	await expect(page.getByRole("button", { name: "Export HTML" })).toBeEnabled();
+	expect(await again).toBeUndefined();
 });
 
 test("skills and prompts dialog puts a command into the composer", async () => {

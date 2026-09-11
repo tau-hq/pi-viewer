@@ -358,15 +358,38 @@ export async function copyLastAnswer(sessionId: string): Promise<void> {
 }
 
 /** Fetch a session's raw JSONL from the host and hand it to the browser as a download. */
+/**
+ * A download is announced by the browser itself, so the interface says nothing about it. A
+ * second click within this window does nothing, and the button gives no sign of that either:
+ * it stays live, because a control that greys itself out feels broken for the one click in a
+ * hundred that lands on it.
+ */
+const DOWNLOAD_COOLDOWN_MS = 5_000;
+const lastDownload = new Map<string, number>();
+
+function downloadTooSoon(key: string): boolean {
+	const now = Date.now();
+	if (now - (lastDownload.get(key) ?? 0) < DOWNLOAD_COOLDOWN_MS) return true;
+	// Claimed before the work starts, so a burst of clicks cannot slip through it.
+	lastDownload.set(key, now);
+	return false;
+}
+
+/** A failed download must be repeatable at once, so it does not hold the window. */
+function releaseDownload(key: string): void {
+	lastDownload.delete(key);
+}
+
 export async function downloadSessionJsonl(sessionPath: string): Promise<void> {
+	if (downloadTooSoon(`jsonl:${sessionPath}`)) return;
 	try {
 		const data = await getTransport().send({ type: "sessions.exportJsonl", sessionPath });
 		const record = asRecord(data);
 		const content = typeof record?.content === "string" ? record.content : "";
 		const fileName = pickString(data, "fileName") ?? "session.jsonl";
 		downloadText(fileName, content, "application/x-ndjson");
-		toast("info", t("toast.jsonlDownloaded", { fileName }));
 	} catch (error) {
+		releaseDownload(`jsonl:${sessionPath}`);
 		// A session pi has not written yet (fresh fork, no messages) has no file on disk.
 		toast("error", t("toast.commandFailed", { command: "sessions.exportJsonl", message: errorMessage(error) }));
 		throw error;
@@ -391,14 +414,21 @@ export async function exportSessionJsonl(sessionId: string): Promise<void> {
  * path (an export someone asked to be written there) is announced instead.
  */
 export async function exportSessionHtml(sessionId: string): Promise<void> {
-	const data = await getTransport().sendSession(sessionId, { type: "exportHtml" });
+	const key = `html:${sessionId}`;
+	if (downloadTooSoon(key)) return;
+	let data: unknown;
+	try {
+		data = await getTransport().sendSession(sessionId, { type: "exportHtml" });
+	} catch (error) {
+		releaseDownload(key);
+		throw error;
+	}
 	const html = pickString(data, "html");
 	if (html) {
-		const fileName = pickString(data, "fileName") ?? `tau-session-${sessionId.slice(0, 8)}.html`;
-		downloadText(fileName, html, "text/html");
-		toast("info", t("toast.htmlDownloaded", { fileName }));
+		downloadText(pickString(data, "fileName") ?? `tau-session-${sessionId.slice(0, 8)}.html`, html, "text/html");
 		return;
 	}
+	// No document came back, so nothing was downloaded and the path is all there is to say.
 	const path = pickString(data, "path", "outputPath");
 	toast("info", path ? t("toast.exported", { path }) : t("toast.exportedDownload"));
 }
