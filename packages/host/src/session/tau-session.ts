@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { EventEmitter } from "node:events";
+import { readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { basename, join } from "node:path";
 import { TAU_REPLY_KEY } from "@pi-tau/pi-extension";
 import type {
 	ApprovalMode,
@@ -190,6 +193,13 @@ export class TauSession extends EventEmitter {
 		return this.rpc.alive;
 	}
 
+	/** What the browser should call the export: the session file's name, or the session id. */
+	private exportFileName(): string {
+		const file = this.state.sessionFile;
+		const stem = file ? basename(file).replace(/\.jsonl$/, "") : this.handle;
+		return `tau-session-${stem}.html`;
+	}
+
 	get sessionFile(): string | undefined {
 		return this.state.sessionFile;
 	}
@@ -356,9 +366,21 @@ export class TauSession extends EventEmitter {
 			case "getStats":
 				return this.refreshStats();
 			case "exportHtml": {
-				const cmd: Parameters<RpcProcess["request"]>[0] = { type: "export_html" };
-				if (command.outputPath) cmd.outputPath = command.outputPath;
-				return this.rpc.request(cmd, 120_000);
+				// A caller that names a path wants the file there, and it is theirs to keep.
+				if (command.outputPath) {
+					return this.rpc.request({ type: "export_html", outputPath: command.outputPath }, 120_000);
+				}
+				// Otherwise the export belongs to the browser: pi writes it somewhere temporary,
+				// the content travels back as a download and the host keeps nothing. Letting pi
+				// choose would drop the file into the session's working directory, which for a
+				// session started in / means writing into the root of the machine.
+				const file = join(tmpdir(), `tau-export-${randomUUID()}.html`);
+				try {
+					await this.rpc.request({ type: "export_html", outputPath: file }, 120_000);
+					return { path: file, fileName: this.exportFileName(), html: await readFile(file, "utf8") };
+				} finally {
+					await rm(file, { force: true }).catch(() => undefined);
+				}
 			}
 			case "fork": {
 				const result = await this.rpc.request<{ text: string; cancelled: boolean }>(
