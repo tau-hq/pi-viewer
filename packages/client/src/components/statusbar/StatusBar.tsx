@@ -74,7 +74,7 @@ export function StatusBar({ sessionId }: { sessionId: string }) {
 			<Item className="font-mono" title={model ? `${model.provider} · ${model.id}` : undefined}>
 				{model ? model.id : t("status.noModel")}
 			</Item>
-			{model?.reasoning && thinkingLevel && <Item>· {thinkingLevel}</Item>}
+			{model?.reasoning && thinkingLevel && <Item>{thinkingLevel}</Item>}
 			{approvalMode && (
 				<Item title={t("mode.title")}>
 					<span data-testid="status-mode">{t(APPROVAL_MODE_TEXT[approvalMode].title)}</span>

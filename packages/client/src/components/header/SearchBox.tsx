@@ -31,7 +31,7 @@ function markClass(current: boolean): string {
 function isMatch(value: unknown): value is SearchMatch {
 	if (typeof value !== "object" || value === null) return false;
 	const record = value as Record<string, unknown>;
-	return typeof record.entryId === "string" && typeof record.preview === "string";
+	return typeof record.entryId === "string" && typeof record.preview === "string" && typeof record.index === "number";
 }
 
 /** The hit, marked inside its line, so the eye finds it without reading the whole preview. */
@@ -72,9 +72,10 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	const inputRef = useRef<HTMLInputElement>(null);
 
 	// The transcript marks the hit this names in the second colour.
-	const setSearchActive = useUiStore((s) => s.setSearchActiveEntry);
+	const setSearchActive = useUiStore((s) => s.setSearchActive);
 	useEffect(() => {
-		setSearchActive(matches[active]?.entryId);
+		const match = matches[active];
+		setSearchActive(match?.entryId, match?.index ?? 0);
 	}, [matches, active, setSearchActive]);
 
 	// This box is keyed by session, so a mount means another session and another set of entries.
@@ -165,10 +166,14 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	const step = (delta: number) => {
 		if (matches.length === 0) return;
 		const next = visited ? (active + delta + matches.length) % matches.length : delta > 0 ? 0 : matches.length - 1;
+		const previous = matches[active]?.entryId;
 		setActive(next);
 		setVisited(true);
 		const match = matches[next];
 		if (!match) return;
+		// Only when the step lands in another message. Inside one, the transcript scrolls to the
+		// marked word itself, and flashing the same message on every step would be noise.
+		if (visited && match.entryId === previous) return;
 		const view = useSessionStore.getState().views[sessionId];
 		if (view?.messages.some((message) => message.id === match.entryId)) revealEntry(sessionId, match.entryId);
 	};
@@ -281,7 +286,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 								{matches.map((match, index) => (
 									<button
 										type="button"
-										key={match.entryId}
+										key={`${match.entryId}:${match.index}`}
 										data-testid="search-result"
 										onMouseEnter={() => setActive(index)}
 										onClick={() => jump(match)}

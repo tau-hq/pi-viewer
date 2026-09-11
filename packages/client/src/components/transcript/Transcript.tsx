@@ -137,7 +137,8 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 	// While the search field is open, every occurrence of what is typed is marked in place.
 	const searchQuery = useUiStore((s) => (s.searchOpen ? s.searchQuery : ""));
 	const searchActiveEntry = useUiStore((s) => s.searchActiveEntry);
-	useSearchHighlight(scrollRef, searchQuery, searchActiveEntry);
+	const searchActiveIndex = useUiStore((s) => s.searchActiveIndex);
+	useSearchHighlight(scrollRef, searchQuery, searchActiveEntry, searchActiveIndex);
 
 	const items = virtualizer.getVirtualItems();
 

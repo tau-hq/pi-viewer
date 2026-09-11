@@ -63,7 +63,8 @@ test("the icon grows into a field and finds an entry of this session", async () 
 	await input.fill(MARKER);
 	const results = page.getByTestId("search-results");
 	await expect(results).toBeVisible();
-	await expect(results.getByTestId("search-result")).toHaveCount(1);
+	// One row per occurrence: the shell command and its output.
+	await expect(results.getByTestId("search-result")).toHaveCount(2);
 	await expect(results.getByTestId("search-result").first()).toContainText(MARKER);
 	await page.screenshot({ path: `${SHOTS}/90-search-open.png`, animations: "disabled" });
 
@@ -120,37 +121,37 @@ test("the counter names the hit and the arrows walk them", async () => {
 	await page.keyboard.press("Control+f");
 	const input = page.getByTestId("search-input");
 	await input.fill(PAIR);
+	// Two shell runs, each with the word in the command and in the output: four occurrences.
 	const counter = page.getByTestId("search-count");
-	await expect(counter).toHaveText("1/2");
+	await expect(counter).toHaveText("1/4");
 
 	// The first step goes to hit one, not past it; then it moves, and the end wraps round.
 	await page.getByTestId("search-next").click();
-	await expect(counter).toHaveText("1/2");
+	await expect(counter).toHaveText("1/4");
 	await page.getByTestId("search-next").click();
-	await expect(counter).toHaveText("2/2");
-	await page.getByTestId("search-next").click();
-	await expect(counter).toHaveText("1/2");
+	await expect(counter).toHaveText("2/4");
+	for (let rest = 0; rest < 3; rest++) await page.getByTestId("search-next").click();
+	await expect(counter).toHaveText("1/4");
 	await page.getByTestId("search-previous").click();
-	await expect(counter).toHaveText("2/2");
+	await expect(counter).toHaveText("4/4");
 	// The caret never leaves the field, so Escape still closes and typing still searches.
 	await expect(input).toBeFocused();
 	await page.screenshot({ path: `${SHOTS}/93-search-counter.png`, animations: "disabled" });
 
 	await input.press("ArrowUp");
-	await expect(counter).toHaveText("1/2");
+	await expect(counter).toHaveText("3/4");
 
-	// The hit being looked at is painted apart from the rest: two occurrences in that one
-	// shell card, two in the other, and the sets swap when the selection moves.
+	// Exactly the one occurrence the counter names is painted apart from the other three.
 	const painted = () =>
 		page.evaluate(() => {
 			const scope = window as unknown as { CSS?: { highlights?: Map<string, { size: number }> } };
 			const all = scope.CSS?.highlights;
 			return { rest: all?.get("tau-search")?.size ?? 0, active: all?.get("tau-search-active")?.size ?? 0 };
 		});
-	await expect.poll(painted).toEqual({ rest: 2, active: 2 });
+	await expect.poll(painted).toEqual({ rest: 3, active: 1 });
 	await page.getByTestId("search-next").click();
-	await expect(counter).toHaveText("2/2");
-	await expect.poll(painted).toEqual({ rest: 2, active: 2 });
+	await expect(counter).toHaveText("4/4");
+	await expect.poll(painted).toEqual({ rest: 3, active: 1 });
 
 	await page.keyboard.press("Escape");
 	await expect.poll(painted).toEqual({ rest: 0, active: 0 });
@@ -180,7 +181,7 @@ test("a hit on an abandoned branch is found and reached", async () => {
 	await page.keyboard.press("Control+f");
 	await page.getByTestId("search-input").fill(MARKER);
 	const results = page.getByTestId("search-results");
-	await expect(results.getByTestId("search-result")).toHaveCount(1);
+	await expect(results.getByTestId("search-result")).toHaveCount(2);
 	const hit = results.getByTestId("search-result").first();
 	await expect(hit).toHaveAttribute("title", /another branch/);
 	await page.screenshot({ path: `${SHOTS}/91-search-off-branch.png`, animations: "disabled" });

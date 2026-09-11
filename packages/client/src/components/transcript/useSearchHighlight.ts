@@ -1,4 +1,4 @@
-import { type RefObject, useEffect } from "react";
+import { type RefObject, useEffect, useRef } from "react";
 import { clearHighlight, collectMatchRanges, highlightsSupported, paintHighlight } from "@/lib/text-highlight";
 
 /** Below this a search marks nothing: two letters would light up half the transcript. */
@@ -10,14 +10,31 @@ function cssEscape(value: string): string {
 	return escape ? escape(value) : value.replace(/["\\]/g, "\\$&");
 }
 
+/** Keep the marked word inside the view, with a little air above and below it. */
+function scrollRangeIntoView(container: HTMLElement, range: Range): void {
+	const rect = range.getBoundingClientRect();
+	if (rect.height === 0 && rect.width === 0) return;
+	const view = container.getBoundingClientRect();
+	const margin = 64;
+	if (rect.top >= view.top + margin && rect.bottom <= view.bottom - margin) return;
+	container.scrollTop += rect.top - view.top - (view.height - rect.height) / 2;
+}
+
 /**
  * Paint every occurrence of the search text inside the transcript. The list is virtual and the
  * assistant keeps writing into it, so the ranges are collected again whenever the rows change
  * or the view scrolls; one frame is the fastest this can repeat.
  */
-export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: string, activeEntryId?: string): void {
+export function useSearchHighlight(
+	root: RefObject<HTMLElement | null>,
+	query: string,
+	activeEntryId?: string,
+	activeIndex = 0,
+): void {
 	const needle = query.trim();
 	const active = needle.length >= MIN_HIGHLIGHT_LENGTH && highlightsSupported();
+	// The hit already brought into view; scrolling repaints, so this must not repeat itself.
+	const scrolledTo = useRef<string | undefined>(undefined);
 
 	useEffect(() => {
 		const element = root.current;
@@ -36,11 +53,20 @@ export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: s
 				paintHighlight(all);
 				return;
 			}
-			const active = all.filter((range) => row.contains(range.startContainer));
+			// The nth occurrence of that row, counted as the page shows them. Source order and
+			// rendered order agree for text, shell output and tool results; where a card folds
+			// something away the count can fall short, so it is clamped to what is on screen.
+			const inRow = all.filter((range) => row.contains(range.startContainer));
+			const current = inRow[Math.min(activeIndex, inRow.length - 1)];
 			paintHighlight(
-				all.filter((range) => !row.contains(range.startContainer)),
-				active,
+				all.filter((range) => range !== current),
+				current ? [current] : [],
 			);
+			const key = `${activeEntryId}:${activeIndex}:${needle}`;
+			if (current && scrolledTo.current !== key) {
+				scrolledTo.current = key;
+				scrollRangeIntoView(element, current);
+			}
 		};
 		const schedule = () => {
 			if (frame === 0) frame = requestAnimationFrame(repaint);
@@ -56,5 +82,5 @@ export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: s
 			if (frame !== 0) cancelAnimationFrame(frame);
 			clearHighlight();
 		};
-	}, [root, needle, active, activeEntryId]);
+	}, [root, needle, active, activeEntryId, activeIndex]);
 }
