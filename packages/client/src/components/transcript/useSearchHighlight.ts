@@ -4,12 +4,18 @@ import { clearHighlight, collectMatchRanges, highlightsSupported, paintHighlight
 /** Below this a search marks nothing: two letters would light up half the transcript. */
 export const MIN_HIGHLIGHT_LENGTH = 3;
 
+/** pi's entry ids are plain, but a selector built from data never goes in unescaped. */
+function cssEscape(value: string): string {
+	const escape = (globalThis as { CSS?: { escape?: (input: string) => string } }).CSS?.escape;
+	return escape ? escape(value) : value.replace(/["\\]/g, "\\$&");
+}
+
 /**
  * Paint every occurrence of the search text inside the transcript. The list is virtual and the
  * assistant keeps writing into it, so the ranges are collected again whenever the rows change
  * or the view scrolls; one frame is the fastest this can repeat.
  */
-export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: string): void {
+export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: string, activeEntryId?: string): void {
 	const needle = query.trim();
 	const active = needle.length >= MIN_HIGHLIGHT_LENGTH && highlightsSupported();
 
@@ -22,7 +28,19 @@ export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: s
 		let frame = 0;
 		const repaint = () => {
 			frame = 0;
-			paintHighlight(collectMatchRanges(element, needle));
+			const all = collectMatchRanges(element, needle);
+			// The row the counter is naming, if it is rendered at all.
+			const selector = activeEntryId === undefined ? undefined : `[data-entry-id="${cssEscape(activeEntryId)}"]`;
+			const row = selector === undefined ? null : element.querySelector(selector);
+			if (!row) {
+				paintHighlight(all);
+				return;
+			}
+			const active = all.filter((range) => row.contains(range.startContainer));
+			paintHighlight(
+				all.filter((range) => !row.contains(range.startContainer)),
+				active,
+			);
 		};
 		const schedule = () => {
 			if (frame === 0) frame = requestAnimationFrame(repaint);
@@ -38,5 +56,5 @@ export function useSearchHighlight(root: RefObject<HTMLElement | null>, query: s
 			if (frame !== 0) cancelAnimationFrame(frame);
 			clearHighlight();
 		};
-	}, [root, needle, active]);
+	}, [root, needle, active, activeEntryId]);
 }

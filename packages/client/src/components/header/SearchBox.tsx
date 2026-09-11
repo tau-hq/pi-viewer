@@ -21,6 +21,13 @@ const ROLE_LABEL: Partial<Record<MessageRole | "other", TKey>> = {
 	branchSummary: "search.roleBranch",
 };
 
+/** The hit being looked at is orange, the rest yellow; the list says the same as the transcript. */
+function markClass(current: boolean): string {
+	return current
+		? "bg-search-hit-active text-search-hit-active-foreground"
+		: "bg-search-hit text-search-hit-foreground";
+}
+
 function isMatch(value: unknown): value is SearchMatch {
 	if (typeof value !== "object" || value === null) return false;
 	const record = value as Record<string, unknown>;
@@ -28,13 +35,13 @@ function isMatch(value: unknown): value is SearchMatch {
 }
 
 /** The hit, marked inside its line, so the eye finds it without reading the whole preview. */
-function Preview({ match }: { match: SearchMatch }) {
+function Preview({ match, current }: { match: SearchMatch; current: boolean }) {
 	const start = Math.max(0, Math.min(match.offset, match.preview.length));
 	const end = Math.min(match.preview.length, start + match.length);
 	return (
 		<span className="block truncate">
 			{match.preview.slice(0, start)}
-			<mark className="rounded-sm bg-search-hit text-search-hit-foreground">{match.preview.slice(start, end)}</mark>
+			<mark className={cn("rounded-sm", markClass(current))}>{match.preview.slice(start, end)}</mark>
 			{match.preview.slice(end)}
 		</span>
 	);
@@ -63,6 +70,12 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	const [visited, setVisited] = useState(false);
 	const [ran, setRan] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	// The transcript marks the hit this names in the second colour.
+	const setSearchActive = useUiStore((s) => s.setSearchActiveEntry);
+	useEffect(() => {
+		setSearchActive(matches[active]?.entryId);
+	}, [matches, active, setSearchActive]);
 
 	// This box is keyed by session, so a mount means another session and another set of entries.
 	useEffect(() => {
@@ -285,7 +298,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 											<span className="tabular-nums">{new Date(match.timestamp).toLocaleString()}</span>
 										</span>
 										<span className="w-full min-w-0 text-xs">
-											<Preview match={match} />
+											<Preview match={match} current={index === active} />
 										</span>
 									</button>
 								))}

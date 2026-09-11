@@ -6,6 +6,7 @@
  */
 
 const NAME = "tau-search";
+const ACTIVE_NAME = "tau-search-active";
 
 interface HighlightRegistry {
 	set: (name: string, highlight: object) => void;
@@ -52,18 +53,26 @@ export function collectMatchRanges(root: Node, needle: string, limit = 4000): Ra
 	return ranges;
 }
 
-export function paintHighlight(ranges: Range[]): void {
+/**
+ * Paint the hits. `active` holds the ones inside the message the counter is naming; the two
+ * sets must not overlap, or the same word would be claimed by both registries.
+ */
+export function paintHighlight(ranges: Range[], active: Range[] = []): void {
 	const scope = globals();
 	const registry = scope.CSS?.highlights;
 	const Ctor = scope.Highlight;
 	if (!registry || typeof Ctor !== "function") return;
-	if (ranges.length === 0) {
-		registry.delete(NAME);
-		return;
+	for (const [name, list] of [
+		[NAME, ranges],
+		[ACTIVE_NAME, active],
+	] as const) {
+		if (list.length === 0) registry.delete(name);
+		else registry.set(name, new Ctor(...list));
 	}
-	registry.set(NAME, new Ctor(...ranges));
 }
 
 export function clearHighlight(): void {
-	globals().CSS?.highlights?.delete(NAME);
+	const registry = globals().CSS?.highlights;
+	registry?.delete(NAME);
+	registry?.delete(ACTIVE_NAME);
 }

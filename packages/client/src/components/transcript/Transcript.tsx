@@ -136,7 +136,8 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 
 	// While the search field is open, every occurrence of what is typed is marked in place.
 	const searchQuery = useUiStore((s) => (s.searchOpen ? s.searchQuery : ""));
-	useSearchHighlight(scrollRef, searchQuery);
+	const searchActiveEntry = useUiStore((s) => s.searchActiveEntry);
+	useSearchHighlight(scrollRef, searchQuery, searchActiveEntry);
 
 	const items = virtualizer.getVirtualItems();
 
@@ -161,6 +162,7 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 								<div
 									key={item.key}
 									data-index={item.index}
+									data-entry-id={row.kind === "message" ? row.message.id : undefined}
 									ref={virtualizer.measureElement}
 									className={cn(
 										"absolute top-0 left-0 w-full px-4 py-2",
