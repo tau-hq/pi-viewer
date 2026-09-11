@@ -104,6 +104,9 @@ interface UiStoreState {
 	 */
 	searchOpen: boolean;
 	searchNonce: number;
+	/** What is typed in the search field; the transcript marks it, so it cannot stay local. */
+	searchQuery: string;
+	setSearchQuery: (query: string) => void;
 	openSearch: () => void;
 	closeSearch: () => void;
 	/** Entry the transcript should scroll to and flash; the nonce allows the same one twice. */
@@ -165,8 +168,10 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 		}),
 	searchOpen: false,
 	searchNonce: 0,
+	searchQuery: "",
+	setSearchQuery: (searchQuery) => set({ searchQuery }),
 	openSearch: () => set((s) => ({ searchOpen: true, searchNonce: s.searchNonce + 1 })),
-	closeSearch: () => set({ searchOpen: false }),
+	closeSearch: () => set({ searchOpen: false, searchQuery: "" }),
 	reveal: undefined,
 	revealEntry: (sessionId, entryId) =>
 		set((s) => ({ reveal: { sessionId, entryId, nonce: (s.reveal?.nonce ?? 0) + 1 } })),

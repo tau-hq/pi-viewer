@@ -9,6 +9,7 @@ import { StreamingRow } from "./AssistantMessage";
 import { LiveBashRow } from "./BashExecutionCard";
 import { MessageRow } from "./MessageRow";
 import { buildRows, type TranscriptRow } from "./rows";
+import { useSearchHighlight } from "./useSearchHighlight";
 
 const BOTTOM_THRESHOLD_PX = 48;
 const EMPTY: never[] = [];
@@ -133,11 +134,20 @@ export function Transcript({ sessionId }: { sessionId: string }) {
 		};
 	}, [reveal, rows, virtualizer]);
 
+	// While the search field is open, every occurrence of what is typed is marked in place.
+	const searchQuery = useUiStore((s) => (s.searchOpen ? s.searchQuery : ""));
+	useSearchHighlight(scrollRef, searchQuery);
+
 	const items = virtualizer.getVirtualItems();
 
 	return (
 		<div className="relative min-h-0 flex-1">
-			<div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto overscroll-contain">
+			<div
+				ref={scrollRef}
+				onScroll={onScroll}
+				data-testid="transcript-scroll"
+				className="h-full overflow-y-auto overscroll-contain"
+			>
 				{rows.length === 0 ? (
 					<div className="flex h-full items-center justify-center text-muted-foreground text-sm">
 						{t("transcript.empty")}

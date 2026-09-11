@@ -33,7 +33,7 @@ function Preview({ match }: { match: SearchMatch }) {
 	return (
 		<span className="block truncate">
 			{match.preview.slice(0, start)}
-			<mark className="rounded-sm bg-foreground/15 text-foreground">{match.preview.slice(start, end)}</mark>
+			<mark className="rounded-sm bg-search-hit text-search-hit-foreground">{match.preview.slice(start, end)}</mark>
 			{match.preview.slice(end)}
 		</span>
 	);
@@ -51,13 +51,20 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	const closeSearch = useUiStore((s) => s.closeSearch);
 	const revealEntry = useUiStore((s) => s.revealEntry);
 	const command = useSessionsStore((s) => s.command);
-	const [query, setQuery] = useState("");
+	// In the store, because the transcript marks every occurrence of it while the field is open.
+	const query = useUiStore((s) => s.searchQuery);
+	const setQuery = useUiStore((s) => s.setSearchQuery);
 	const [matches, setMatches] = useState<SearchMatch[]>([]);
 	const [truncated, setTruncated] = useState(false);
 	const [busy, setBusy] = useState(false);
 	const [active, setActive] = useState(0);
 	const [ran, setRan] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+
+	// This box is keyed by session, so a mount means another session and another set of entries.
+	useEffect(() => {
+		setQuery("");
+	}, [setQuery]);
 
 	// Every open request focuses, so the shortcut works on an already visible field.
 	useEffect(() => {
@@ -100,8 +107,8 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	}, [open, query, command]);
 
 	const close = () => {
+		// closeSearch drops the query as well, so nothing stays marked in the transcript.
 		closeSearch();
-		setQuery("");
 		setMatches([]);
 		setRan(false);
 	};
@@ -109,15 +116,16 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 	/**
 	 * A hit the transcript is showing only needs a scroll. Anything else lives on another
 	 * branch or before a compaction, and pi reaches it the way the session tree does.
-	 * A click is done with the search and closes it; Enter keeps the list open, so repeated
-	 * presses walk through the hits the way a browser's find does.
+	 * A hit on screen leaves the field open: the occurrences stay marked while it is, and
+	 * closing right after a jump would take the marks away at the moment they are wanted.
 	 */
-	const jump = (match: SearchMatch, andClose: boolean) => {
+	const jump = (match: SearchMatch) => {
 		const view = useSessionStore.getState().views[sessionId];
 		const shown = view?.messages.some((message) => message.id === match.entryId) ?? false;
 		if (shown) {
 			revealEntry(sessionId, match.entryId);
-			if (andClose) close();
+			// A click moves the focus onto the row; give it back, or the next key would be lost.
+			inputRef.current?.focus();
 			return;
 		}
 		// Moving the session to another branch always ends the search: it is a real change,
@@ -145,7 +153,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 			event.preventDefault();
 			const match = matches[active];
 			if (!match) return;
-			jump(match, false);
+			jump(match);
 			// Wrap around, so the last hit leads back to the first instead of standing still.
 			setActive((index) => (index + 1) % matches.length);
 		}
@@ -219,7 +227,7 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 										key={match.entryId}
 										data-testid="search-result"
 										onMouseEnter={() => setActive(index)}
-										onClick={() => jump(match, true)}
+										onClick={() => jump(match)}
 										title={match.onActivePath ? undefined : t("search.otherBranch")}
 										className={cn(
 											"flex w-full flex-col items-start gap-0.5 rounded-md px-2 py-1.5 text-left",

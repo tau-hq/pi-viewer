@@ -70,9 +70,40 @@ test("the icon grows into a field and finds an entry of this session", async () 
 	await input.press("Enter");
 	await expect(results).toBeVisible();
 
-	// Picking a hit that is on screen closes the field again.
+	// So does a click: the hits stay marked in the transcript until the field is closed.
 	await results.getByTestId("search-result").first().click();
+	await expect(input).toBeVisible();
+	await page.keyboard.press("Escape");
 	await expect(input).toBeHidden();
+});
+
+test("three letters and more mark every occurrence in the transcript", async () => {
+	// The count the browser is painting, straight from the highlight registry.
+	const marked = () =>
+		page.evaluate(() => {
+			const scope = window as unknown as { CSS?: { highlights?: Map<string, { size: number }> } };
+			return scope.CSS?.highlights?.get("tau-search")?.size ?? 0;
+		});
+
+	await page.keyboard.press("Control+f");
+	const input = page.getByTestId("search-input");
+	await expect(input).toBeVisible();
+
+	// Two letters would light up half the transcript, so nothing is marked yet.
+	await input.fill(MARKER.slice(0, 2));
+	await expect.poll(marked).toBe(0);
+
+	// The command and its output, so the marker stands twice on screen.
+	await input.fill(MARKER);
+	await expect.poll(marked).toBe(2);
+	await page.screenshot({ path: `${SHOTS}/92-search-highlight.png`, animations: "disabled" });
+
+	// Upper and lower case find each other.
+	await input.fill(MARKER.toUpperCase());
+	await expect.poll(marked).toBe(2);
+
+	await page.keyboard.press("Escape");
+	await expect.poll(marked).toBe(0);
 });
 
 test("Ctrl+F opens the field and puts the caret in it", async () => {

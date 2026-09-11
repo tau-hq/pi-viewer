@@ -27,6 +27,9 @@
 	--warning: oklch(0.75 0.15 80);
 	--bash: oklch(0.65 0.15 60);
 	--user-bubble: oklch(0.94 0.02 265);
+	/* The one colour the interface allows itself: a found word, marked the way a highlighter would. */
+	--search-hit: oklch(0.86 0.16 88);
+	--search-hit-foreground: oklch(0.22 0.04 70);
 	--radius: 0.625rem;
 
 	/* Terminal palette (xterm.js). Read with getComputedStyle, see components/terminal/xterm-theme.ts. */
@@ -74,6 +77,8 @@
 	--warning: oklch(0.8 0.15 80);
 	--bash: oklch(0.78 0.14 60);
 	--user-bubble: oklch(0.27 0.02 265);
+	--search-hit: oklch(0.8 0.16 82);
+	--search-hit-foreground: oklch(0.2 0.04 70);
 
 	--term-background: oklch(0.13 0.006 270);
 	--term-foreground: oklch(0.9 0.005 260);
@@ -121,6 +126,8 @@
 	--color-warning: var(--warning);
 	--color-bash: var(--bash);
 	--color-user-bubble: var(--user-bubble);
+	--color-search-hit: var(--search-hit);
+	--color-search-hit-foreground: var(--search-hit-foreground);
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
@@ -145,6 +152,16 @@
 	::selection {
 		background: color-mix(in oklch, var(--primary) 35%, transparent);
 	}
+}
+
+/*
+ * Every occurrence of the session search, marked in place. This uses the highlight registry
+ * rather than wrapping the text: the transcript is markdown, highlighted code and tool output,
+ * and none of it may be rewritten just to paint a word. See lib/text-highlight.ts.
+ */
+::highlight(tau-search) {
+	background-color: var(--search-hit);
+	color: var(--search-hit-foreground);
 }
 
 /* Thin, unobtrusive scrollbars */
