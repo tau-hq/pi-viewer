@@ -106,22 +106,22 @@ export function searchEntries(
 		const { role, text } = entryText(entry);
 		if (text.length === 0) continue;
 		const haystack = text.toLowerCase();
-		let from = 0;
-		// At most one hit per entry: the list is for jumping to a message, not for counting.
-		const at = haystack.indexOf(needle, from);
-		if (at === -1) continue;
-		from = at;
-		const { preview, offset } = previewAround(text, at, needle.length);
-		matches.push({
-			entryId: entry.id,
-			role,
-			preview,
-			offset,
-			length: needle.length,
-			onActivePath: active.has(entry.id),
-			timestamp: entry.timestamp,
-		});
-		if (matches.length >= limit) return { matches, truncated: true };
+		// Every occurrence, not one per entry: the counter beside the search field names words.
+		let index = 0;
+		for (let at = haystack.indexOf(needle); at !== -1; at = haystack.indexOf(needle, at + needle.length)) {
+			const { preview, offset } = previewAround(text, at, needle.length);
+			matches.push({
+				entryId: entry.id,
+				index: index++,
+				role,
+				preview,
+				offset,
+				length: needle.length,
+				onActivePath: active.has(entry.id),
+				timestamp: entry.timestamp,
+			});
+			if (matches.length >= limit) return { matches, truncated: true };
+		}
 	}
 	return { matches, truncated: false };
 }

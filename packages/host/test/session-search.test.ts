@@ -53,7 +53,14 @@ describe("searchEntries", () => {
 		expect(match.role).toBe("assistant");
 	});
 
-	it("reports at most one hit per entry and stops at the limit", () => {
+	it("reports every occurrence of an entry, numbered in reading order", () => {
+		const twice = userEntry("z", null, "deployment here and deployment there");
+		const { matches } = searchEntries([twice], "z", "deployment");
+		expect(matches.map((match) => match.index)).toEqual([0, 1]);
+		expect(matches.every((match) => match.entryId === "z")).toBe(true);
+	});
+
+	it("stops at the limit and says so", () => {
 		const { matches, truncated } = searchEntries(entries, "d", "deployment", 2);
 		expect(matches).toHaveLength(2);
 		expect(truncated).toBe(true);

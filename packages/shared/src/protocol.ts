@@ -408,6 +408,8 @@ export interface ToolInfo {
 export interface SearchMatch {
 	/** pi's durable entry id: usable for tree navigation and for scrolling the transcript. */
 	entryId: string;
+	/** Which occurrence inside that entry this is, counted from zero in reading order. */
+	index: number;
 	role: MessageRole | "other";
 	/** The matching line, trimmed, with the hit somewhere inside it. */
 	preview: string;
