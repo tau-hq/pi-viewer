@@ -1,5 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, queueMessages, toasts } from "./helpers";
+import {
+	collectErrors,
+	composer,
+	deleteE2eSessions,
+	e2eSessionName,
+	openApp,
+	queueMessages,
+	runShell,
+	toasts,
+} from "./helpers";
 
 /**
  * The small parity features: session settings, hotkeys, changelog, tree filters, queue entries,
@@ -151,8 +160,7 @@ test("the changelog dialog renders pi's release notes", async () => {
 
 test("tree filters narrow the entry list", async () => {
 	// A shell command adds an entry without a model round trip.
-	await composer(page).fill("!echo hello-tree");
-	await composer(page).press("Enter");
+	await runShell(page, "echo hello-tree");
 	await expect(page.locator("main")).toContainText("hello-tree", { timeout: 30_000 });
 
 	await page.getByRole("button", { name: "Session tree" }).click();

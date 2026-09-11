@@ -69,6 +69,29 @@ test("the header button opens a shell terminal that runs commands", async () => 
 	await closeActiveTab();
 });
 
+test("a terminal survives switching to another session and back", async () => {
+	// The tests before this one leave the panel in whatever state they ended in.
+	if (!(await page.getByTestId("terminal-panel").isVisible())) await page.getByTestId("header-terminal").click();
+	await expect(page.getByTestId("terminal-panel")).toBeVisible();
+	if ((await tabs().count()) === 0) {
+		await page.getByRole("button", { name: "New terminal" }).click();
+		await page.getByTestId("terminal-new-shell").click();
+	}
+	await expect(terminalRows(page)).toBeVisible({ timeout: 20_000 });
+	await terminalType(page, "echo tau-keeps-running");
+	await expect(terminalRows(page)).toContainText("tau-keeps-running");
+
+	// Show another session and come back; the panel and its output must still stand.
+	const other = page.getByTestId("session-item").filter({ hasNotText: SESSION_NAME }).first();
+	const hasOther = (await other.count()) > 0;
+	test.skip(!hasOther, "needs a second session in the sidebar");
+	await other.click();
+	await expect(page.getByTestId("terminal-panel")).toBeVisible();
+	await page.getByTestId("session-item").filter({ hasText: SESSION_NAME }).first().click();
+	await expect(terminalRows(page)).toContainText("tau-keeps-running");
+	await closeActiveTab();
+});
+
 test("pi's own terminal UI runs in a tab and /quit ends it", async () => {
 	await page.getByRole("button", { name: "New terminal" }).click();
 	await page.getByTestId("terminal-new-pi").click();

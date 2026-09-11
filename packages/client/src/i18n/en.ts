@@ -295,8 +295,7 @@ export const en = {
 		liveOutput: "Live output",
 	},
 	composer: {
-		placeholder: "Message pi… (/ for commands, ! for shell)",
-		placeholderBash: "Shell command (!! keeps the output out of context)",
+		placeholder: "Message pi… (/ for commands)",
 		placeholderSteer: "Steer the running turn… (Alt+Enter queues a follow-up)",
 		send: "Send",
 		steer: "Steer",
@@ -304,8 +303,6 @@ export const en = {
 		abort: "Abort",
 		attach: "Attach image",
 		removeImage: "Remove image",
-		bashMode: "Shell",
-		bashExcluded: "Shell · excluded from context",
 		queueSteering: "Steering",
 		queueFollowUp: "Follow-up",
 		clearQueue: "Clear queue",

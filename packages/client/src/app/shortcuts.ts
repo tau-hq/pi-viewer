@@ -145,7 +145,6 @@ export const SHORTCUTS: readonly ShortcutSpec[] = [
 	{ id: "followUp", group: "composer", keys: "Alt+↵", description: "hotkeys.followUp" },
 	{ id: "slash", group: "composer", keys: "/", description: "hotkeys.slash" },
 	{ id: "mention", group: "composer", keys: "@", description: "hotkeys.mention" },
-	{ id: "bash", group: "composer", keys: "! · !!", description: "hotkeys.bash" },
 	{ id: "composerEscape", group: "composer", keys: "Esc", description: "hotkeys.escape" },
 	{ id: "paste", group: "composer", keys: "Ctrl/⌘+V", description: "hotkeys.paste" },
 	{ id: "navigate", group: "dialogs", keys: "↑ ↓", description: "hotkeys.navigate" },

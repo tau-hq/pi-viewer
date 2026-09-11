@@ -1,5 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, queueMessages, toasts } from "./helpers";
+import {
+	collectErrors,
+	composer,
+	deleteE2eSessions,
+	e2eSessionName,
+	openApp,
+	queueMessages,
+	runShell,
+	toasts,
+} from "./helpers";
 
 /**
  * The last interactive gaps against pi's terminal UI: `@` file mentions, the copy button of a
@@ -101,8 +110,7 @@ test("accepting a directory drills down, Esc closes and a miss says so", async (
 });
 
 test("the copy button of a message puts its text on the clipboard", async () => {
-	await composer(page).fill("!echo tau-copy-row");
-	await composer(page).press("Enter");
+	await runShell(page, "echo tau-copy-row");
 	await expect(page.locator("main")).toContainText("tau-copy-row", { timeout: 30_000 });
 
 	const copy = page.getByTestId("message-copy").last();

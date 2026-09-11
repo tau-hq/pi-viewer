@@ -1,7 +1,6 @@
 import type { ImageInput, ThinkingLevel } from "@pi-tau/shared";
 import { useCallback } from "react";
 import { t } from "@/i18n";
-import { parseBashResult } from "@/lib/result-data";
 import { useSessionStore } from "@/store/session-store";
 import { copyLastAnswer, exportSessionHtml, exportSessionJsonl, useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
@@ -10,8 +9,6 @@ import { THINKING_LEVELS } from "./ThinkingPicker";
 export interface ComposerActions {
 	/** Send text as prompt, or steer/follow-up while a run is active. */
 	submitPrompt: (text: string, images: ImageInput[], followUp: boolean) => void;
-	/** Run a `!command` (`!!` keeps it out of the model context). */
-	runBash: (text: string) => void;
 	/** Execute a Tau built-in; false when the command is not handled locally. */
 	runSlash: (name: string, args: string) => boolean;
 	abort: () => void;
@@ -29,20 +26,6 @@ export function useComposerActions(sessionId: string): ComposerActions {
 			const payload = images.length > 0 ? { message: text, images } : { message: text };
 			const type = running ? (followUp ? "followUp" : "steer") : "prompt";
 			void command({ type, ...payload }).catch(() => undefined);
-		},
-		[command, sessionId],
-	);
-
-	const runBash = useCallback<ComposerActions["runBash"]>(
-		(text) => {
-			const excludeFromContext = text.startsWith("!!");
-			const shell = text.replace(/^!!?/, "").trim();
-			if (!shell) return;
-			const store = useSessionStore.getState();
-			store.startBashRun(sessionId, shell);
-			void command({ type: "bash", command: shell, ...(excludeFromContext ? { excludeFromContext } : {}) })
-				.then((data) => useSessionStore.getState().endBashRun(sessionId, parseBashResult(data)))
-				.catch(() => useSessionStore.getState().endBashRun(sessionId));
 		},
 		[command, sessionId],
 	);
@@ -129,5 +112,5 @@ export function useComposerActions(sessionId: string): ComposerActions {
 		void command({ type: "abort" }).catch(() => undefined);
 	}, [command]);
 
-	return { submitPrompt, runBash, runSlash, abort };
+	return { submitPrompt, runSlash, abort };
 }

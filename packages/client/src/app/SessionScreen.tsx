@@ -14,7 +14,7 @@ import { SessionHeader } from "@/components/header/SessionHeader";
 import { useSessionTitle } from "@/components/header/SessionNameEditor";
 import { StatusBar } from "@/components/statusbar/StatusBar";
 import { TerminalDock } from "@/components/terminal/TerminalDock";
-import { Transcript } from "@/components/transcript/Transcript";
+import { TranscriptStack } from "@/components/transcript/TranscriptStack";
 import { Spinner } from "@/components/ui/spinner";
 import { t } from "@/i18n";
 import { useConnectionStore } from "@/store/connection-store";
@@ -46,9 +46,9 @@ export function SessionScreen({ sessionId }: { sessionId: string }) {
 	return (
 		<>
 			<DocumentTitle sessionId={sessionId} />
-			<SessionHeader sessionId={sessionId} />
+			<SessionHeader key={sessionId} sessionId={sessionId} />
 			{loaded ? (
-				<Transcript sessionId={sessionId} />
+				<TranscriptStack sessionId={sessionId} />
 			) : (
 				<div className="flex flex-1 items-center justify-center gap-2 text-muted-foreground text-sm">
 					<Spinner /> {t("empty.loading")}
@@ -59,8 +59,8 @@ export function SessionScreen({ sessionId }: { sessionId: string }) {
 				<div className="mx-auto flex w-full max-w-3xl flex-col gap-2 px-4 pt-2 pb-2">
 					<TrustBanner sessionId={sessionId} />
 					<WidgetBlocks sessionId={sessionId} placement="aboveEditor" />
-					<QueuePanel sessionId={sessionId} />
-					<Composer sessionId={sessionId} />
+					<QueuePanel key={sessionId} sessionId={sessionId} />
+					<Composer key={sessionId} sessionId={sessionId} />
 					<WidgetBlocks sessionId={sessionId} placement="belowEditor" />
 				</div>
 			</div>
