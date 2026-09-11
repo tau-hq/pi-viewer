@@ -107,6 +107,9 @@ interface UiStoreState {
 	/** What is typed in the search field; the transcript marks it, so it cannot stay local. */
 	searchQuery: string;
 	setSearchQuery: (query: string) => void;
+	/** Entry of the hit the counter is naming; its occurrences are marked in the second colour. */
+	searchActiveEntry: string | undefined;
+	setSearchActiveEntry: (entryId: string | undefined) => void;
 	openSearch: () => void;
 	closeSearch: () => void;
 	/** Entry the transcript should scroll to and flash; the nonce allows the same one twice. */
@@ -170,8 +173,10 @@ export const useUiStore = create<UiStoreState>()((set) => ({
 	searchNonce: 0,
 	searchQuery: "",
 	setSearchQuery: (searchQuery) => set({ searchQuery }),
+	searchActiveEntry: undefined,
+	setSearchActiveEntry: (searchActiveEntry) => set({ searchActiveEntry }),
 	openSearch: () => set((s) => ({ searchOpen: true, searchNonce: s.searchNonce + 1 })),
-	closeSearch: () => set({ searchOpen: false, searchQuery: "" }),
+	closeSearch: () => set({ searchOpen: false, searchQuery: "", searchActiveEntry: undefined }),
 	reveal: undefined,
 	revealEntry: (sessionId, entryId) =>
 		set((s) => ({ reveal: { sessionId, entryId, nonce: (s.reveal?.nonce ?? 0) + 1 } })),

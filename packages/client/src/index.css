@@ -27,9 +27,12 @@
 	--warning: oklch(0.75 0.15 80);
 	--bash: oklch(0.65 0.15 60);
 	--user-bubble: oklch(0.94 0.02 265);
-	/* The one colour the interface allows itself: a found word, marked the way a highlighter would. */
-	--search-hit: oklch(0.86 0.16 88);
+	/* The one colour the interface allows itself: a found word, marked the way a highlighter
+	 * would. The hit currently being looked at turns orange, the rest stay yellow. */
+	--search-hit: oklch(0.88 0.15 96);
 	--search-hit-foreground: oklch(0.22 0.04 70);
+	--search-hit-active: oklch(0.77 0.18 62);
+	--search-hit-active-foreground: oklch(0.2 0.05 55);
 	--radius: 0.625rem;
 
 	/* Terminal palette (xterm.js). Read with getComputedStyle, see components/terminal/xterm-theme.ts. */
@@ -77,8 +80,10 @@
 	--warning: oklch(0.8 0.15 80);
 	--bash: oklch(0.78 0.14 60);
 	--user-bubble: oklch(0.27 0.02 265);
-	--search-hit: oklch(0.8 0.16 82);
+	--search-hit: oklch(0.84 0.15 96);
 	--search-hit-foreground: oklch(0.2 0.04 70);
+	--search-hit-active: oklch(0.74 0.19 56);
+	--search-hit-active-foreground: oklch(0.18 0.05 55);
 
 	--term-background: oklch(0.13 0.006 270);
 	--term-foreground: oklch(0.9 0.005 260);
@@ -128,6 +133,8 @@
 	--color-user-bubble: var(--user-bubble);
 	--color-search-hit: var(--search-hit);
 	--color-search-hit-foreground: var(--search-hit-foreground);
+	--color-search-hit-active: var(--search-hit-active);
+	--color-search-hit-active-foreground: var(--search-hit-active-foreground);
 	--radius-sm: calc(var(--radius) - 4px);
 	--radius-md: calc(var(--radius) - 2px);
 	--radius-lg: var(--radius);
@@ -162,6 +169,12 @@
 ::highlight(tau-search) {
 	background-color: var(--search-hit);
 	color: var(--search-hit-foreground);
+}
+
+/* The hit the counter is naming, so the eye finds it among all the others. */
+::highlight(tau-search-active) {
+	background-color: var(--search-hit-active);
+	color: var(--search-hit-active-foreground);
 }
 
 /* Thin, unobtrusive scrollbars */

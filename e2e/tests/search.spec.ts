@@ -79,11 +79,13 @@ test("the icon grows into a field and finds an entry of this session", async () 
 });
 
 test("three letters and more mark every occurrence in the transcript", async () => {
-	// The count the browser is painting, straight from the highlight registry.
+	// Everything the browser is painting, straight from the highlight registry. Both names
+	// together: the hit being looked at lives in its own one, see the counter test below.
 	const marked = () =>
 		page.evaluate(() => {
 			const scope = window as unknown as { CSS?: { highlights?: Map<string, { size: number }> } };
-			return scope.CSS?.highlights?.get("tau-search")?.size ?? 0;
+			const all = scope.CSS?.highlights;
+			return (all?.get("tau-search")?.size ?? 0) + (all?.get("tau-search-active")?.size ?? 0);
 		});
 
 	await page.keyboard.press("Control+f");
@@ -136,7 +138,22 @@ test("the counter names the hit and the arrows walk them", async () => {
 
 	await input.press("ArrowUp");
 	await expect(counter).toHaveText("1/2");
+
+	// The hit being looked at is painted apart from the rest: two occurrences in that one
+	// shell card, two in the other, and the sets swap when the selection moves.
+	const painted = () =>
+		page.evaluate(() => {
+			const scope = window as unknown as { CSS?: { highlights?: Map<string, { size: number }> } };
+			const all = scope.CSS?.highlights;
+			return { rest: all?.get("tau-search")?.size ?? 0, active: all?.get("tau-search-active")?.size ?? 0 };
+		});
+	await expect.poll(painted).toEqual({ rest: 2, active: 2 });
+	await page.getByTestId("search-next").click();
+	await expect(counter).toHaveText("2/2");
+	await expect.poll(painted).toEqual({ rest: 2, active: 2 });
+
 	await page.keyboard.press("Escape");
+	await expect.poll(painted).toEqual({ rest: 0, active: 0 });
 	await expect(input).toBeHidden();
 });
 
