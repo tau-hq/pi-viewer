@@ -143,6 +143,42 @@ export async function deleteE2eGroups(page: Page): Promise<number> {
 	}, E2E_GROUP_PREFIX);
 }
 
+/** Stop the pi process of a session without deleting it, so the next click opens it cold. */
+export async function stopSessionProcess(page: Page, sessionPath: string): Promise<void> {
+	await page.evaluate(async (path) => {
+		const socket = new WebSocket(`ws://${location.host}/ws`);
+		await new Promise<void>((resolve, reject) => {
+			socket.onopen = () => resolve();
+			socket.onerror = () => reject(new Error("host socket failed"));
+		});
+		let id = 0;
+		const pending = new Map<string, (data: unknown) => void>();
+		socket.onmessage = (event) => {
+			const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+			if (envelope.type !== "result" || !envelope.id) return;
+			pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+			pending.delete(envelope.id);
+		};
+		const send = (command: unknown): Promise<unknown> =>
+			new Promise((resolve) => {
+				const key = String(++id);
+				pending.set(key, resolve);
+				socket.send(JSON.stringify({ type: "cmd", id: key, command }));
+			});
+		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+		// The host answers with a bare array here; other commands wrap their payload.
+		type Row = { id: string; handle?: string; path: string; running: boolean };
+		const list = (await send({ type: "sessions.list" })) as Row[] | { sessions?: Row[] } | undefined;
+		const rows = Array.isArray(list) ? list : (list?.sessions ?? []);
+		for (const session of rows) {
+			if (session.path === path && session.running) {
+				await send({ type: "sessions.close", sessionId: session.handle ?? session.id });
+			}
+		}
+		socket.close();
+	}, sessionPath);
+}
+
 /**
  * Drop the name the suite gave a project group, so the sidebar shows the folder name again.
  * Runs whatever the tests did, so a failed assertion cannot leave a renamed project behind.

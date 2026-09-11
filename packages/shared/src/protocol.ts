@@ -614,6 +614,8 @@ export type HostCommand =
 	| { type: "sessions.open"; sessionPath: string }
 	| { type: "sessions.close"; sessionId: string }
 	| { type: "sessions.delete"; sessionPath: string }
+	/** The conversation straight from the session file; no pi process is started for it. */
+	| { type: "sessions.preview"; sessionPath: string }
 	| { type: "models.list" }
 	/** Refresh the provider model catalogs from the network. */
 	| { type: "models.refresh" }
@@ -752,6 +754,13 @@ export interface HostCommandResults {
 	"sessions.open": { sessionId: string };
 	"sessions.close": null;
 	"sessions.delete": null;
+	"sessions.preview": {
+		messages: Message[];
+		leafId?: string;
+		cwd?: string;
+		model?: { provider: string; modelId: string };
+		thinkingLevel?: string;
+	};
 	"models.list": ModelInfo[];
 	"groups.list": GroupsState;
 	"groups.create": GroupsState;

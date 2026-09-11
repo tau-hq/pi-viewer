@@ -90,6 +90,7 @@ export const en = {
 		stats: "Statistics",
 		cwd: "Working directory",
 		processDead: "Process not running",
+		attaching: "Starting…",
 		restart: "Restart",
 		more: "More actions",
 		tools: "Tools",

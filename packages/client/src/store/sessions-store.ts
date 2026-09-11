@@ -1,4 +1,12 @@
-import type { ModelInfo, ProjectInfo, SessionCommand, SessionCreateOptions, SessionSummary } from "@pi-tau/shared";
+import type {
+	Message,
+	ModelInfo,
+	ProjectInfo,
+	SessionCommand,
+	SessionCreateOptions,
+	SessionSummary,
+	ThinkingLevel,
+} from "@pi-tau/shared";
 import { create } from "zustand";
 import { t } from "@/i18n";
 import { copyText, downloadText } from "@/lib/download";
@@ -7,7 +15,7 @@ import { asRecord, pickArray, pickString } from "@/lib/result-data";
 import { isActiveSummary, isPendingPath } from "@/lib/session-match";
 import { getTransport } from "@/transport/transport";
 import { TransportError } from "@/transport/ws";
-import { useSessionStore } from "./session-store";
+import { type SessionPreview, useSessionStore } from "./session-store";
 import { toast, useUiStore } from "./ui-store";
 
 interface SessionsStoreState {
@@ -131,7 +139,32 @@ export const useSessionsStore = create<SessionsStoreState>()((set, get) => ({
 	},
 
 	open: async (summary) => {
-		const sessionId = await resolveHandle(summary);
+		// Reading a session needs no process. Show the conversation from the file right away and
+		// let pi start behind it, instead of holding the click for half a second of process start.
+		const expected = summary.handle ?? summary.id;
+		const cold = !summary.running && !isPendingPath(summary.path);
+		if (cold) {
+			useSessionStore.getState().ensure(expected);
+			set({ currentSessionId: expected });
+			void getTransport()
+				.send({ type: "sessions.preview", sessionPath: summary.path })
+				.then((data) => useSessionStore.getState().applyPreview(expected, toPreview(data)))
+				.catch(() => undefined);
+		}
+		let sessionId: string;
+		try {
+			sessionId = await resolveHandle(summary);
+		} catch (error) {
+			// The preview is on screen but nothing can attach to it; leave no phantom behind.
+			if (cold) {
+				useSessionStore.getState().remove(expected);
+				set({ currentSessionId: undefined });
+			}
+			throw error;
+		}
+		// pi names a session by its own id, so the handle is the one shown already; should the
+		// host ever answer with another, the half-built view must not stay behind.
+		if (cold && sessionId !== expected) useSessionStore.getState().remove(expected);
 		get().select(sessionId);
 		if (!summary.running) void get().loadSessions();
 		return sessionId;
@@ -281,6 +314,31 @@ async function ensureOpen(summary: SessionSummary): Promise<string> {
  * one, the host resolves (and spawns) the session for the file — except for a session pi has
  * not written yet, whose only address is its id.
  */
+/** The preview answer, with the model resolved against the catalog the client already has. */
+function toPreview(data: unknown): SessionPreview {
+	const record = asRecord(data) ?? {};
+	const preview: SessionPreview = { messages: pickArray<Message>(record, "messages") };
+	if (typeof record.leafId === "string") preview.leafId = record.leafId;
+	if (typeof record.cwd === "string") preview.cwd = record.cwd;
+	if (typeof record.thinkingLevel === "string") preview.thinkingLevel = record.thinkingLevel as ThinkingLevel;
+	const model = asRecord(record.model);
+	if (typeof model?.provider === "string" && typeof model.modelId === "string") {
+		const known = useSessionsStore
+			.getState()
+			.models.find((entry) => entry.provider === model.provider && entry.id === model.modelId);
+		preview.model = known ?? {
+			provider: model.provider,
+			id: model.modelId,
+			name: model.modelId,
+			reasoning: false,
+			input: ["text"],
+			contextWindow: 0,
+			maxTokens: 0,
+		};
+	}
+	return preview;
+}
+
 async function resolveHandle(summary: SessionSummary): Promise<string> {
 	if (summary.handle) return summary.handle;
 	if (isPendingPath(summary.path)) return summary.id;

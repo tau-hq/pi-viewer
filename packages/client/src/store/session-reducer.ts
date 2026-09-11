@@ -45,6 +45,11 @@ export interface SessionView {
 	sessionId: string;
 	/** True once a snapshot has been applied. */
 	loaded: boolean;
+	/**
+	 * The conversation is on screen straight from the session file while pi is still starting.
+	 * Everything is readable, nothing can be sent yet, and the snapshot replaces it shortly.
+	 */
+	attaching: boolean;
 	lastSeq: number;
 	state: SessionState;
 	messages: Message[];
@@ -95,6 +100,7 @@ export function createSessionView(sessionId: string): SessionView {
 	return {
 		sessionId,
 		loaded: false,
+		attaching: false,
 		lastSeq: -1,
 		state: emptySessionState(sessionId),
 		messages: [],
@@ -123,6 +129,7 @@ export function applySnapshot(previous: SessionView | undefined, seq: number, sn
 	return {
 		...base,
 		loaded: true,
+		attaching: false,
 		lastSeq: seq,
 		state: snapshot.state,
 		messages: snapshot.messages,
@@ -142,7 +149,7 @@ export function applySnapshot(previous: SessionView | undefined, seq: number, sn
 	};
 }
 
-function indexToolResults(messages: readonly Message[]): Record<string, ToolResultMessage> {
+export function indexToolResults(messages: readonly Message[]): Record<string, ToolResultMessage> {
 	const index: Record<string, ToolResultMessage> = {};
 	for (const message of messages) {
 		if (message.role === "toolResult") index[message.toolCallId] = message;

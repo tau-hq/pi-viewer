@@ -53,6 +53,7 @@ import {
 } from "../pi-sdk.js";
 import { type TerminalOptions, Terminals } from "../server/terminals.js";
 import { AuthFlows } from "./auth-flows.js";
+import { previewSession } from "./preview.js";
 import { TauSession } from "./tau-session.js";
 
 const log = createLogger("registry");
@@ -223,6 +224,9 @@ export class SessionRegistry extends EventEmitter {
 				return this.closeSession(command.sessionId);
 			case "sessions.delete":
 				return this.deleteSession(command.sessionPath);
+			// Reading a session needs no process, so this answers in milliseconds.
+			case "sessions.preview":
+				return previewSession(resolve(command.sessionPath));
 			case "models.list":
 				return this.listModels();
 			case "groups.list":

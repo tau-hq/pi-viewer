@@ -137,6 +137,7 @@ export class TauSession extends EventEmitter {
 	/** Spawn pi, then load state and transcript. */
 	static async start(options: Omit<TauSessionOptions, "handle"> & { handle?: string }): Promise<TauSession> {
 		const rpc = new RpcProcess(rpcOptions(options));
+		const began = Date.now();
 		rpc.start();
 		let piState: PiSessionState;
 		try {
@@ -147,9 +148,11 @@ export class TauSession extends EventEmitter {
 				`pi did not answer get_state: ${(error as Error).message}. stderr: ${rpc.lastStderr.slice(-800)}`,
 			);
 		}
+		const ready = Date.now();
 		const session = new TauSession({ ...options, handle: options.handle ?? piState.sessionId }, rpc);
 		session.adopt(piState);
 		await session.rebuild();
+		const rebuilt = Date.now();
 		// Ask Tau's extension for its approval mode; without the extension it stays undefined.
 		try {
 			const data = (await session.extensionCall("tau-approval", "tau.approval", "", 8_000)) as { mode?: string };
@@ -157,6 +160,10 @@ export class TauSession extends EventEmitter {
 		} catch {
 			// no Tau extension in this session
 		}
+		// Where the wait goes when a session opens; the three add up to what the client sees.
+		log.info(
+			`session ready in ${Date.now() - began} ms (pi ${ready - began}, entries ${rebuilt - ready}, extension ${Date.now() - rebuilt})`,
+		);
 		return session;
 	}
 
