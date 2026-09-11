@@ -118,7 +118,7 @@ export function GroupSection({
 							type="button"
 							data-testid="group-header"
 							onClick={() => toggleCollapsed(group.key)}
-							onDoubleClick={() => group.groupId !== undefined && setEditing(true)}
+							onDoubleClick={() => setEditing(true)}
 							title={group.cwd ?? group.name}
 							aria-label={collapsed ? t("groups.expand") : t("groups.collapse")}
 							className="flex w-full items-center gap-1 rounded-md px-1.5 py-1 text-left font-medium text-[11px] text-muted-foreground uppercase tracking-wide hover:text-foreground"

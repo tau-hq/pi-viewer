@@ -28,11 +28,16 @@ export interface SessionActions {
 	onNewGroupWith: (session: SessionSummary) => void;
 }
 
-/** Everything a group header offers. A project header only answers the first two. */
+/**
+ * Everything a group header offers. A project header cannot be reordered or deleted, because
+ * it exists as long as sessions share that directory, but it can be named like any other.
+ */
 export interface GroupActions {
 	onNewSession: (group: SidebarGroup) => void;
 	onNewGroup: () => void;
 	onRenameGroup: (group: SidebarGroup, name: string) => void;
+	/** Drop a project group's own name, so the folder name shows again. */
+	onResetGroupName: (group: SidebarGroup) => void;
 	onMoveGroup: (group: SidebarGroup, direction: "up" | "down") => void;
 	onDeleteGroup: (group: SidebarGroup) => void;
 }

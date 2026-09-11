@@ -129,7 +129,9 @@ export async function deleteE2eGroups(page: Page): Promise<number> {
 			});
 		// TAU_PROTOCOL_VERSION; the host refuses a hello with another version.
 		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
-		const groups = ((await send({ type: "groups.list" })) ?? []) as { id: string; name: string }[];
+		// groups.list answers with the whole state: the groups and the names given to projects.
+		const state = (await send({ type: "groups.list" })) as { groups?: { id: string; name: string }[] } | undefined;
+		const groups = state?.groups ?? [];
 		let removed = 0;
 		for (const group of groups) {
 			if (!group.name.startsWith(prefix)) continue;
@@ -139,6 +141,31 @@ export async function deleteE2eGroups(page: Page): Promise<number> {
 		socket.close();
 		return removed;
 	}, E2E_GROUP_PREFIX);
+}
+
+/**
+ * Drop the name the suite gave a project group, so the sidebar shows the folder name again.
+ * Runs whatever the tests did, so a failed assertion cannot leave a renamed project behind.
+ */
+export async function resetProjectName(page: Page, cwd: string): Promise<void> {
+	await page.evaluate(async (dir) => {
+		const socket = new WebSocket(`ws://${location.host}/ws`);
+		await new Promise<void>((resolve, reject) => {
+			socket.onopen = () => resolve();
+			socket.onerror = () => reject(new Error("host socket failed"));
+		});
+		socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+		socket.send(
+			JSON.stringify({ type: "cmd", id: "reset", command: { type: "groups.renameProject", cwd: dir, name: null } }),
+		);
+		await new Promise<void>((resolve) => {
+			socket.onmessage = (event) => {
+				const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string };
+				if (envelope.type === "result" && envelope.id === "reset") resolve();
+			};
+		});
+		socket.close();
+	}, cwd);
 }
 
 /**

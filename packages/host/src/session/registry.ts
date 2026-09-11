@@ -25,6 +25,7 @@ import {
 	pruneAssignments,
 	renameGroup,
 	reorderGroups,
+	setProjectName,
 } from "../groups.js";
 import { patchJsonFile } from "../json-file.js";
 import { createLogger } from "../logger.js";
@@ -250,6 +251,11 @@ export class SessionRegistry extends EventEmitter {
 			}
 			case "groups.reorder": {
 				const groups = reorderGroups(command.ids);
+				this.notifyChanged();
+				return groups;
+			}
+			case "groups.renameProject": {
+				const groups = setProjectName(command.cwd, command.name);
 				this.notifyChanged();
 				return groups;
 			}

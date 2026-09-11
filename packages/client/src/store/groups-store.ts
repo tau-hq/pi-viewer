@@ -1,8 +1,8 @@
-import type { SessionGroup, SessionSummary } from "@pi-tau/shared";
+import type { GroupsState, SessionGroup, SessionSummary } from "@pi-tau/shared";
 import { create } from "zustand";
 import { movedGroupOrder } from "@/components/sidebar/grouping";
 import { t } from "@/i18n";
-import { pickArray } from "@/lib/result-data";
+import { asRecord, pickArray } from "@/lib/result-data";
 import { isPendingPath } from "@/lib/session-match";
 import { getTransport } from "@/transport/transport";
 import { useSessionsStore } from "./sessions-store";
@@ -15,6 +15,8 @@ import { toast } from "./ui-store";
  */
 interface GroupsStoreState {
 	groups: SessionGroup[];
+	/** Working directory to the name the user gave that project group; see grouping.ts. */
+	projectNames: Record<string, string>;
 	loaded: boolean;
 	/**
 	 * Sessions created for a group before pi wrote their file, as host handle to group id.
@@ -25,6 +27,8 @@ interface GroupsStoreState {
 	/** Returns the new group, or undefined when the host refused. */
 	createGroup: (name: string) => Promise<SessionGroup | undefined>;
 	renameGroup: (id: string, name: string) => Promise<void>;
+	/** Name a project group, or fall back to the folder name with `name: null`. */
+	renameProject: (cwd: string, name: string | null) => Promise<void>;
 	deleteGroup: (id: string) => Promise<void>;
 	/** Swap the group with its neighbour; a group at the end stays put. */
 	moveGroup: (id: string, direction: "up" | "down") => Promise<void>;
@@ -34,6 +38,14 @@ interface GroupsStoreState {
 	createSessionIn: (cwd: string, groupId: string | null) => Promise<void>;
 	/** Send the deferred assignments whose session file exists now. */
 	flushDeferred: (sessions: SessionSummary[]) => void;
+}
+
+/** The answer of every groups command: the list, and the names given to project folders. */
+function readState(data: unknown): GroupsState {
+	const names = asRecord(asRecord(data)?.projectNames) ?? {};
+	const projectNames: Record<string, string> = {};
+	for (const [cwd, name] of Object.entries(names)) if (typeof name === "string") projectNames[cwd] = name;
+	return { groups: pickArray<SessionGroup>(data, "groups"), projectNames };
 }
 
 function failed(command: string, error: unknown): void {
@@ -71,13 +83,13 @@ function without<T>(record: Record<string, T>, keys: string[]): Record<string, T
 
 export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 	groups: [],
+	projectNames: {},
 	loaded: false,
 	deferred: {},
 
 	load: async () => {
 		try {
-			const data = await getTransport().send({ type: "groups.list" });
-			set({ groups: pickArray<SessionGroup>(data, "groups"), loaded: true });
+			set({ ...readState(await getTransport().send({ type: "groups.list" })), loaded: true });
 		} catch (error) {
 			failed("groups.list", error);
 		}
@@ -86,9 +98,9 @@ export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 	createGroup: async (name) => {
 		const before = new Set(get().groups.map((group) => group.id));
 		try {
-			const data = await getTransport().send({ type: "groups.create", name });
-			const groups = pickArray<SessionGroup>(data, "groups");
-			set({ groups, loaded: true });
+			const state = readState(await getTransport().send({ type: "groups.create", name }));
+			const { groups } = state;
+			set({ ...state, loaded: true });
 			// The new group is the one the old list did not have; the host keeps the ids.
 			return groups.find((group) => !before.has(group.id));
 		} catch (error) {
@@ -101,11 +113,25 @@ export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 		const previous = get().groups;
 		set({ groups: previous.map((group) => (group.id === id ? { ...group, name } : group)) });
 		try {
-			const data = await getTransport().send({ type: "groups.rename", id, name });
-			set({ groups: pickArray<SessionGroup>(data, "groups") });
+			set(readState(await getTransport().send({ type: "groups.rename", id, name })));
 		} catch (error) {
 			set({ groups: previous });
 			failed("groups.rename", error);
+		}
+	},
+
+	renameProject: async (cwd, name) => {
+		const previous = get().projectNames;
+		// The header shows the new name at once; only a refusal has to be taken back.
+		const next = { ...previous };
+		if (name === null) delete next[cwd];
+		else next[cwd] = name;
+		set({ projectNames: next });
+		try {
+			set(readState(await getTransport().send({ type: "groups.renameProject", cwd, name })));
+		} catch (error) {
+			set({ projectNames: previous });
+			failed("groups.renameProject", error);
 		}
 	},
 
@@ -115,8 +141,7 @@ export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 		set({ groups: previous.filter((group) => group.id !== id) });
 		useSessionsStore.getState().dropSessionGroup(id);
 		try {
-			const data = await getTransport().send({ type: "groups.delete", id });
-			set({ groups: pickArray<SessionGroup>(data, "groups") });
+			set(readState(await getTransport().send({ type: "groups.delete", id })));
 			toast("info", t("groups.deleted"));
 		} catch (error) {
 			set({ groups: previous });
@@ -137,8 +162,7 @@ export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 			}),
 		});
 		try {
-			const data = await getTransport().send({ type: "groups.reorder", ids });
-			set({ groups: pickArray<SessionGroup>(data, "groups") });
+			set(readState(await getTransport().send({ type: "groups.reorder", ids })));
 		} catch (error) {
 			set({ groups: previous });
 			failed("groups.reorder", error);
@@ -151,8 +175,7 @@ export const useGroupsStore = create<GroupsStoreState>()((set, get) => ({
 		sessions.setSessionGroup(sessionPath, groupId);
 		try {
 			// The row has already moved, so a successful move says nothing a toast could add.
-			const data = await getTransport().send({ type: "groups.assign", sessionPath, groupId });
-			set({ groups: pickArray<SessionGroup>(data, "groups") });
+			set(readState(await getTransport().send({ type: "groups.assign", sessionPath, groupId })));
 		} catch (error) {
 			useSessionsStore.getState().setSessionGroup(sessionPath, before);
 			failed("groups.assign", error);

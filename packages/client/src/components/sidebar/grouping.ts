@@ -16,6 +16,8 @@ export interface SidebarGroup {
 	groupId?: string;
 	/** Set for a project group: the working directory the sessions share. */
 	cwd?: string;
+	/** True when the name is the user's, not the folder's; only then can it be reset. */
+	named?: boolean;
 	sessions: SessionSummary[];
 }
 
@@ -38,6 +40,7 @@ export function projectGroupKey(cwd: string): string {
  */
 export function buildSidebarGroups(
 	groups: SessionGroup[],
+	projectNames: Record<string, string>,
 	projects: ProjectInfo[],
 	sessions: SessionSummary[],
 	query: string,
@@ -66,17 +69,27 @@ export function buildSidebarGroups(
 		const list = byCwd.get(project.cwd);
 		if (!list) continue;
 		byCwd.delete(project.cwd);
+		const given = projectNames[project.cwd];
 		out.push({
 			kind: "project",
 			key: projectGroupKey(project.cwd),
-			name: project.name || basename(project.cwd),
+			name: given ?? (project.name || basename(project.cwd)),
 			cwd: project.cwd,
+			...(given === undefined ? {} : { named: true }),
 			sessions: list,
 		});
 	}
 	// A directory the project list does not mention still gets its own group.
 	for (const [cwd, list] of byCwd) {
-		out.push({ kind: "project", key: projectGroupKey(cwd), name: basename(cwd) || cwd, cwd, sessions: list });
+		const given = projectNames[cwd];
+		out.push({
+			kind: "project",
+			key: projectGroupKey(cwd),
+			name: given ?? (basename(cwd) || cwd),
+			cwd,
+			...(given === undefined ? {} : { named: true }),
+			sessions: list,
+		});
 	}
 	return out;
 }

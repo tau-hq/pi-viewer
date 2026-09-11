@@ -356,6 +356,17 @@ export interface SessionSummary {
  * A user-made group in the sidebar. Sessions not assigned to one keep falling back to
  * their project directory, which is what the sidebar shows when no group exists at all.
  */
+/**
+ * What the sidebar needs to draw its blocks: the groups the user made, and the names the user
+ * gave project folders. A project group exists because sessions share a directory, so it has
+ * no id to rename - its name is stored against the directory instead.
+ */
+export interface GroupsState {
+	groups: SessionGroup[];
+	/** Resolved working directory to the name the user gave it; absent means the folder name. */
+	projectNames: Record<string, string>;
+}
+
 export interface SessionGroup {
 	id: string;
 	name: string;
@@ -630,6 +641,8 @@ export type HostCommand =
 	| { type: "groups.assign"; sessionPath: string; groupId: string | null }
 	/** New order, given as the group ids from top to bottom. */
 	| { type: "groups.reorder"; ids: string[] }
+	/** Name a project group, or fall back to the folder name with `name: null`. */
+	| { type: "groups.renameProject"; cwd: string; name: string | null }
 	| { type: "fs.listDirs"; path?: string }
 	/** Fuzzy project-file search for `@` mentions in the composer; respects .gitignore. */
 	| { type: "fs.searchFiles"; cwd: string; query: string; limit?: number };
@@ -738,12 +751,13 @@ export interface HostCommandResults {
 	"sessions.close": null;
 	"sessions.delete": null;
 	"models.list": ModelInfo[];
-	"groups.list": SessionGroup[];
-	"groups.create": SessionGroup[];
-	"groups.rename": SessionGroup[];
-	"groups.delete": SessionGroup[];
-	"groups.assign": SessionGroup[];
-	"groups.reorder": SessionGroup[];
+	"groups.list": GroupsState;
+	"groups.create": GroupsState;
+	"groups.rename": GroupsState;
+	"groups.delete": GroupsState;
+	"groups.assign": GroupsState;
+	"groups.reorder": GroupsState;
+	"groups.renameProject": GroupsState;
 	"fs.listDirs": { path: string; dirs: string[] };
 	"fs.searchFiles": { files: FileMatch[] };
 	"auth.providers": AuthProviderInfo[];
