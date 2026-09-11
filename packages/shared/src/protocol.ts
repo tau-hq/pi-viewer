@@ -820,7 +820,11 @@ export interface SessionCommandResults {
 	bash: { output: string; exitCode: number | undefined; cancelled: boolean; truncated: boolean };
 	abortBash: null;
 	getStats: SessionStats;
-	exportHtml: { path: string };
+	/**
+	 * The rendered export. Without an `outputPath` the file belongs to the client: `html` is its
+	 * content and `fileName` the name to save it under, and nothing is left on the host.
+	 */
+	exportHtml: { path: string; fileName?: string; html?: string };
 	fork: { text: string; cancelled: boolean };
 	clone: { cancelled: boolean };
 	getForkMessages: ForkMessageInfo[];

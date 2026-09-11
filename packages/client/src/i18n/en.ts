@@ -428,6 +428,7 @@ export const en = {
 		exported: "Exported to {path}",
 		exportedDownload: "Export downloaded",
 		jsonlDownloaded: "{fileName} downloaded",
+		htmlDownloaded: "{fileName} downloaded",
 		noSessionFile: "This session has no file on the host yet",
 		renamed: "Session renamed",
 		deleted: "Session deleted",

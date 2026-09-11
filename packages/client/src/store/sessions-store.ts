@@ -385,13 +385,18 @@ export async function exportSessionJsonl(sessionId: string): Promise<void> {
 	await downloadSessionJsonl(path);
 }
 
-/** Export via the host; a returned `html` string is downloaded, a `path` is announced. */
+/**
+ * Export the session as HTML. The host hands back the rendered document, so the file lands in
+ * the browser's downloads and not on the machine the host runs on; a host that only names a
+ * path (an export someone asked to be written there) is announced instead.
+ */
 export async function exportSessionHtml(sessionId: string): Promise<void> {
 	const data = await getTransport().sendSession(sessionId, { type: "exportHtml" });
 	const html = pickString(data, "html");
 	if (html) {
-		downloadText(`tau-session-${sessionId.slice(0, 8)}.html`, html);
-		toast("info", t("toast.exportedDownload"));
+		const fileName = pickString(data, "fileName") ?? `tau-session-${sessionId.slice(0, 8)}.html`;
+		downloadText(fileName, html, "text/html");
+		toast("info", t("toast.htmlDownloaded", { fileName }));
 		return;
 	}
 	const path = pickString(data, "path", "outputPath");

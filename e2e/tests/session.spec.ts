@@ -1,5 +1,14 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, sendPrompt, untilIdle } from "./helpers";
+import {
+	collectErrors,
+	composer,
+	deleteE2eSessions,
+	e2eSessionName,
+	openApp,
+	sendPrompt,
+	toasts,
+	untilIdle,
+} from "./helpers";
 
 // One session and one page for the whole file: three LLM prompts in total.
 test.describe.configure({ mode: "serial" });
@@ -92,6 +101,21 @@ test("downloads the session as JSONL from the header menu", async () => {
 	for await (const chunk of stream) chunks.push(Buffer.from(chunk));
 	const first = Buffer.concat(chunks).toString("utf8").split("\n")[0] ?? "";
 	expect(JSON.parse(first)).toMatchObject({ type: "session" });
+});
+
+test("the export button downloads the HTML and leaves nothing on the host", async () => {
+	const [download] = await Promise.all([
+		page.waitForEvent("download"),
+		page.getByRole("button", { name: "Export HTML" }).click(),
+	]);
+	expect(download.suggestedFilename()).toMatch(/^tau-session-.*\.html$/);
+	const stream = await download.createReadStream();
+	const chunks: Buffer[] = [];
+	for await (const chunk of stream) chunks.push(Buffer.from(chunk));
+	const html = Buffer.concat(chunks).toString("utf8");
+	expect(html).toContain("<!DOCTYPE html>");
+	// The export used to be written into the session's working directory and stay there.
+	await expect(toasts(page)).toContainText("downloaded");
 });
 
 test("skills and prompts dialog puts a command into the composer", async () => {
