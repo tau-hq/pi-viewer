@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
 import { APPROVAL_MODE_TEXT } from "../composer/approval-modes";
+import { thinkingLabel } from "../composer/ThinkingPicker";
 import { contextColor } from "../header/StatsPopover";
 import { Spinner } from "../ui/spinner";
 
@@ -74,7 +75,7 @@ export function StatusBar({ sessionId }: { sessionId: string }) {
 			<Item className="font-mono" title={model ? `${model.provider} · ${model.id}` : undefined}>
 				{model ? model.id : t("status.noModel")}
 			</Item>
-			{model?.reasoning && thinkingLevel && <Item>{thinkingLevel}</Item>}
+			{model?.reasoning && thinkingLevel && <Item>{thinkingLabel(thinkingLevel)}</Item>}
 			{approvalMode && (
 				<Item title={t("mode.title")}>
 					<span data-testid="status-mode">{t(APPROVAL_MODE_TEXT[approvalMode].title)}</span>

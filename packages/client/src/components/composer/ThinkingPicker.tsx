@@ -11,6 +11,17 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 export const THINKING_LEVELS: readonly ThinkingLevel[] = ["off", "minimal", "low", "medium", "high", "xhigh", "max"];
 
+/** Levels pi does not spell the way a label should. */
+const LABELS: Record<string, string> = { xhigh: "XHigh" };
+
+/**
+ * How a thinking level is written in the interface. pi's own value stays lower case
+ * everywhere it travels - in commands, in settings files and on the wire.
+ */
+export function thinkingLabel(level: string): string {
+	return LABELS[level] ?? level.charAt(0).toUpperCase() + level.slice(1);
+}
+
 export function ThinkingPicker({ sessionId }: { sessionId: string }) {
 	const level = useSessionStore((s) => s.views[sessionId]?.state.thinkingLevel ?? "off");
 	const modelKey = useSessionStore((s) => {
@@ -53,7 +64,7 @@ export function ThinkingPicker({ sessionId }: { sessionId: string }) {
 					title={t("header.thinking")}
 				>
 					<Sparkles className="text-muted-foreground" />
-					<span className="max-md:hidden">{level}</span>
+					<span className="max-md:hidden">{thinkingLabel(level)}</span>
 					<ChevronDown className="size-3.5 text-muted-foreground" />
 				</Button>
 			</DropdownMenuTrigger>
@@ -64,7 +75,7 @@ export function ThinkingPicker({ sessionId }: { sessionId: string }) {
 						checked={item === level}
 						onSelect={() => void command({ type: "setThinkingLevel", level: item }).catch(() => undefined)}
 					>
-						{item}
+						{thinkingLabel(item)}
 					</DropdownMenuItem>
 				))}
 			</DropdownMenuContent>

@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { t } from "@/i18n";
+import { thinkingLabel } from "../composer/ThinkingPicker";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
@@ -219,7 +220,7 @@ export function AdvancedSessionOptions({ open, onOpenChange, value, onChange }: 
 								<option value="">{t("advancedSession.defaultOption")}</option>
 								{THINKING_LEVEL_VALUES.map((level) => (
 									<option key={level} value={level}>
-										{level}
+										{thinkingLabel(level)}
 									</option>
 								))}
 							</Select>
