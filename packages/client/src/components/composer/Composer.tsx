@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useConnectionStore } from "@/store/connection-store";
 import { useSessionStore } from "@/store/session-store";
 import { useUiStore } from "@/store/ui-store";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
@@ -121,7 +120,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
 	/** Every caret move matters for `@` mentions: typing, clicking and arrow keys all sync it. */
 	const syncCaret = () => setCaret(textareaRef.current?.selectionStart ?? 0);
 
-	const mode = value.startsWith("!!") ? "bashExcluded" : value.startsWith("!") ? "bash" : "prompt";
 	const hasContent = value.trim().length > 0 || attachments.images.length > 0;
 	const canSend = connected && alive && hasContent;
 
@@ -134,11 +132,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
 	const send = (followUp: boolean) => {
 		if (!canSend) return;
 		const text = value.trim();
-		if (mode !== "prompt") {
-			actions.runBash(text);
-			reset();
-			return;
-		}
 		const slash = parseSlash(text);
 		if (slash && actions.runSlash(slash.name, slash.args)) {
 			reset();
@@ -208,11 +201,9 @@ export function Composer({ sessionId }: { sessionId: string }) {
 
 	const placeholder = !connected
 		? t("composer.offline")
-		: mode !== "prompt"
-			? t("composer.placeholderBash")
-			: running
-				? t("composer.placeholderSteer")
-				: t("composer.placeholder");
+		: running
+			? t("composer.placeholderSteer")
+			: t("composer.placeholder");
 
 	return (
 		<div className="relative" {...attachments.dragHandlers}>
@@ -221,12 +212,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 			) : (
 				mentions.open && <MentionMenu menu={mentions} onPick={pickFile} />
 			)}
-			<div
-				className={cn(
-					"flex flex-col rounded-xl border bg-card shadow-sm transition-colors focus-within:ring-2 focus-within:ring-ring/30",
-					mode !== "prompt" ? "border-bash focus-within:border-bash" : "border-border focus-within:border-ring",
-				)}
-			>
+			<div className="flex flex-col rounded-xl border border-border bg-card shadow-sm transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30">
 				<ImageChips images={attachments.images} onRemove={attachments.remove} />
 				<textarea
 					ref={textareaRef}
@@ -243,7 +229,7 @@ export function Composer({ sessionId }: { sessionId: string }) {
 					onPaste={attachments.onPaste}
 					placeholder={placeholder}
 					disabled={!alive && connected}
-					spellCheck={mode === "prompt"}
+					spellCheck
 					className="max-h-64 min-h-[46px] w-full resize-none bg-transparent px-4 py-3 font-sans text-sm leading-[22px] outline-none placeholder:text-muted-foreground disabled:opacity-60"
 				/>
 				<div data-testid="composer-tools" className="flex flex-wrap items-center gap-1 px-2 pb-2">
@@ -256,11 +242,6 @@ export function Composer({ sessionId }: { sessionId: string }) {
 					<ModeMenu sessionId={sessionId} />
 					<ModelPicker sessionId={sessionId} />
 					<ThinkingPicker sessionId={sessionId} />
-					{mode !== "prompt" && (
-						<Badge variant="warning" className="text-bash">
-							{mode === "bash" ? t("composer.bashMode") : t("composer.bashExcluded")}
-						</Badge>
-					)}
 					<div className="flex-1" />
 					{running && (
 						<>

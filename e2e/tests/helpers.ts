@@ -143,6 +143,47 @@ export async function deleteE2eGroups(page: Page): Promise<number> {
 	}, E2E_GROUP_PREFIX);
 }
 
+/**
+ * Run a shell command inside the shown session, the way pi's own `!` does. The composer no
+ * longer offers this (the terminal panel is the place for a shell), but a session command still
+ * writes a durable entry, which is how these tests get content without spending an LLM call.
+ */
+export async function runShell(page: Page, command: string): Promise<void> {
+	await page.evaluate(
+		async ([shell]) => {
+			const socket = new WebSocket(`ws://${location.host}/ws`);
+			await new Promise<void>((resolve, reject) => {
+				socket.onopen = () => resolve();
+				socket.onerror = () => reject(new Error("host socket failed"));
+			});
+			let id = 0;
+			const pending = new Map<string, (data: unknown) => void>();
+			socket.onmessage = (event) => {
+				const envelope = JSON.parse(String(event.data)) as { type?: string; id?: string; ok?: boolean; data?: unknown };
+				if (envelope.type !== "result" || !envelope.id) return;
+				pending.get(envelope.id)?.(envelope.ok ? envelope.data : undefined);
+				pending.delete(envelope.id);
+			};
+			const send = (envelope: Record<string, unknown>): Promise<unknown> =>
+				new Promise((resolve) => {
+					const key = String(++id);
+					pending.set(key, resolve);
+					socket.send(JSON.stringify({ type: "cmd", id: key, ...envelope }));
+				});
+			socket.send(JSON.stringify({ type: "hello", protocolVersion: 1 }));
+			// The session the page is showing is the one whose process is attached and newest.
+			type Row = { id: string; handle?: string; running: boolean; modified: number };
+			const list = (await send({ command: { type: "sessions.list" } })) as Row[] | { sessions?: Row[] } | undefined;
+			const rows = (Array.isArray(list) ? list : (list?.sessions ?? [])).filter((row) => row.running);
+			const current = rows.sort((a, b) => b.modified - a.modified)[0];
+			if (!current) throw new Error("no running session to run a shell command in");
+			await send({ sessionId: current.handle ?? current.id, command: { type: "bash", command: shell } });
+			socket.close();
+		},
+		[command],
+	);
+}
+
 /** Stop the pi process of a session without deleting it, so the next click opens it cold. */
 export async function stopSessionProcess(page: Page, sessionPath: string): Promise<void> {
 	await page.evaluate(async (path) => {

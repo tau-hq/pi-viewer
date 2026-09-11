@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp } from "./helpers";
+import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, runShell } from "./helpers";
 
 /**
  * Session-wide search. No LLM prompt: a `!` command writes an entry, and a step back through
@@ -30,8 +30,7 @@ test.beforeAll(async ({ browser }) => {
 	await composer(page).fill(`/name ${SESSION_NAME}`);
 	await composer(page).press("Enter");
 	await expect(page.locator("header").getByText(SESSION_NAME)).toBeVisible();
-	await composer(page).fill(`!echo ${MARKER}`);
-	await composer(page).press("Enter");
+	await runShell(page, `echo ${MARKER}`);
 	await expect(page.locator("main")).toContainText(MARKER, { timeout: 30_000 });
 });
 
@@ -57,8 +56,8 @@ test("the icon grows into a field and finds an entry of this session", async () 
 
 	await page.getByTestId("search-toggle").click();
 	await expect(input).toBeVisible();
-	const expanded = await box.boundingBox();
-	expect(expanded?.width ?? 0).toBeGreaterThan((collapsed?.width ?? 0) + 40);
+	// The box grows over 200 ms; poll rather than measure once into the middle of it.
+	await expect.poll(async () => (await box.boundingBox())?.width ?? 0).toBeGreaterThan((collapsed?.width ?? 0) + 40);
 
 	await input.fill(MARKER);
 	const results = page.getByTestId("search-results");
@@ -113,8 +112,7 @@ test("three letters and more mark every occurrence in the transcript", async () 
 test("the counter names the hit and the arrows walk them", async () => {
 	// Two entries with the same text, so stepping and wrapping are both visible.
 	for (let run = 0; run < 2; run++) {
-		await composer(page).fill(`!echo ${PAIR}`);
-		await composer(page).press("Enter");
+		await runShell(page, `echo ${PAIR}`);
 		await expect(page.locator("main")).toContainText(PAIR, { timeout: 30_000 });
 	}
 
