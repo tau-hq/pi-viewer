@@ -11,6 +11,7 @@ test.describe.configure({ mode: "serial" });
 const SHOTS = "/srv/pi-tau/e2e/shots";
 const SESSION_NAME = e2eSessionName("search");
 const MARKER = "tau-hay-needle-42";
+const PAIR = "tau-pair-marker";
 
 let page: Page;
 let errors: string[];
@@ -104,6 +105,39 @@ test("three letters and more mark every occurrence in the transcript", async () 
 
 	await page.keyboard.press("Escape");
 	await expect.poll(marked).toBe(0);
+});
+
+test("the counter names the hit and the arrows walk them", async () => {
+	// Two entries with the same text, so stepping and wrapping are both visible.
+	for (let run = 0; run < 2; run++) {
+		await composer(page).fill(`!echo ${PAIR}`);
+		await composer(page).press("Enter");
+		await expect(page.locator("main")).toContainText(PAIR, { timeout: 30_000 });
+	}
+
+	await page.keyboard.press("Control+f");
+	const input = page.getByTestId("search-input");
+	await input.fill(PAIR);
+	const counter = page.getByTestId("search-count");
+	await expect(counter).toHaveText("1/2");
+
+	// The first step goes to hit one, not past it; then it moves, and the end wraps round.
+	await page.getByTestId("search-next").click();
+	await expect(counter).toHaveText("1/2");
+	await page.getByTestId("search-next").click();
+	await expect(counter).toHaveText("2/2");
+	await page.getByTestId("search-next").click();
+	await expect(counter).toHaveText("1/2");
+	await page.getByTestId("search-previous").click();
+	await expect(counter).toHaveText("2/2");
+	// The caret never leaves the field, so Escape still closes and typing still searches.
+	await expect(input).toBeFocused();
+	await page.screenshot({ path: `${SHOTS}/93-search-counter.png`, animations: "disabled" });
+
+	await input.press("ArrowUp");
+	await expect(counter).toHaveText("1/2");
+	await page.keyboard.press("Escape");
+	await expect(input).toBeHidden();
 });
 
 test("Ctrl+F opens the field and puts the caret in it", async () => {

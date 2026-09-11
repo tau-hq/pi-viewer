@@ -360,6 +360,8 @@ export const en = {
 		open: "Search this session",
 		placeholder: "Search this session",
 		noMatch: "Nothing found",
+		previous: "Previous match",
+		next: "Next match",
 		countOne: "1 match",
 		count: "{count} matches",
 		countTruncated: "first {count} matches",
