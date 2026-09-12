@@ -141,6 +141,13 @@ export const en = {
 		toastReset: "Trust decision cleared.",
 	},
 	tools: {
+		needs: "needs {program}, which is not on this machine",
+		installTitle: "Install {program}?",
+		installBody: "pi's {tool} tool uses {program}, which is not on this machine. Tau can install it with {manager}.",
+		installAction: "Install",
+		installing: "Installing {program}…",
+		installFailed: "That did not work, so the tool stays off.",
+		missingTitle: "{program} is missing",
 		title: "Tools",
 		description: "Tools the model may call in this session. Changes apply immediately.",
 		loading: "Loading tools…",

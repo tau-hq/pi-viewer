@@ -52,6 +52,7 @@ import {
 	writeTrust,
 } from "../pi-sdk.js";
 import { type TerminalOptions, Terminals } from "../server/terminals.js";
+import { installToolRequirement, toolRequirements } from "../tool-requirements.js";
 import { AuthFlows } from "./auth-flows.js";
 import { previewSession } from "./preview.js";
 import { TauSession } from "./tau-session.js";
@@ -263,6 +264,10 @@ export class SessionRegistry extends EventEmitter {
 				this.notifyChanged();
 				return groups;
 			}
+			case "tools.requirements":
+				return { requirements: await toolRequirements() };
+			case "tools.install":
+				return installToolRequirement(command.tool);
 			case "fs.searchFiles":
 				return { files: await searchFiles(resolve(command.cwd), command.query, command.limit) };
 			case "fs.listDirs":
