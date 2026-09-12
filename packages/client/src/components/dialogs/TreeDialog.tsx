@@ -16,6 +16,7 @@ import {
 	flattenTree,
 	initialCollapsed,
 	markActivePath,
+	navigationTarget,
 	TREE_FILTERS,
 	type TreeFilter,
 	type TreeRow,
@@ -153,7 +154,8 @@ export function TreeDialog() {
 		if (busy) return;
 		setBusy(true);
 		try {
-			await command({ type: "navigateTree", entryId: node.id, ...(summarize ? { summarize: true } : {}) });
+			const entryId = navigationTarget(node);
+			await command({ type: "navigateTree", entryId, ...(summarize ? { summarize: true } : {}) });
 			closeDialog();
 			toast("info", t("tree.navigated"));
 		} catch {
