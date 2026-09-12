@@ -485,8 +485,14 @@ export class TauSession extends EventEmitter {
 				};
 				return { tools: (data.tools ?? []).filter((tool) => runsOnThisHost(tool)), active: data.active };
 			}
-			case "tools.set":
-				return this.extensionCall("tau-tools", "tau.tools", `set ${command.names.join(",")}`);
+			case "tools.set": {
+				// Both answers carry the whole list, so both have to be filtered the same way.
+				const data = (await this.extensionCall("tau-tools", "tau.tools", `set ${command.names.join(",")}`)) as {
+					tools?: ToolInfo[];
+					active?: string[];
+				};
+				return { tools: (data.tools ?? []).filter((tool) => runsOnThisHost(tool)), active: data.active };
+			}
 			case "reloadResources": {
 				await this.rpc.request({ type: "prompt", message: "/tau-reload" }, 120_000);
 				await this.refreshState();

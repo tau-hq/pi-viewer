@@ -399,6 +399,23 @@ export interface HostInfo {
 	defaultCwd: string;
 }
 
+/**
+ * What a pi tool needs from the machine it runs on. pi's `grep` is ripgrep and its `find` is
+ * fd, so those two can be missing on an otherwise healthy host; the rest need nothing.
+ */
+export interface ToolRequirement {
+	tool: string;
+	/** The program as the machine knows it, for looking it up on the PATH. */
+	program: string;
+	/** The program as a reader knows it; what the interface says. */
+	name: string;
+	available: boolean;
+	/** Set when the host could install it; absent when nothing here can. */
+	install?: { manager: string; package: string };
+	/** Why it cannot be installed from here, in words the reader can act on. */
+	reason?: string;
+}
+
 export interface ToolInfo {
 	name: string;
 	description?: string;
@@ -648,6 +665,10 @@ export type HostCommand =
 	/** Name a project group, or fall back to the folder name with `name: null`. */
 	| { type: "groups.renameProject"; cwd: string; name: string | null }
 	| { type: "fs.listDirs"; path?: string }
+	/** What pi's tools need from this machine, and whether the host could install it. */
+	| { type: "tools.requirements" }
+	/** Install what a tool needs, with the host's package manager. */
+	| { type: "tools.install"; tool: string }
 	/** Fuzzy project-file search for `@` mentions in the composer; respects .gitignore. */
 	| { type: "fs.searchFiles"; cwd: string; query: string; limit?: number };
 
@@ -770,6 +791,8 @@ export interface HostCommandResults {
 	"groups.reorder": GroupsState;
 	"groups.renameProject": GroupsState;
 	"fs.listDirs": { path: string; dirs: string[] };
+	"tools.requirements": { requirements: ToolRequirement[] };
+	"tools.install": { ok: boolean; message: string; available: boolean };
 	"fs.searchFiles": { files: FileMatch[] };
 	"auth.providers": AuthProviderInfo[];
 	"auth.login": { flowId: string };
