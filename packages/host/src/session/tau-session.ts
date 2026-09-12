@@ -39,7 +39,7 @@ import type {
 	PiTreeNode,
 } from "../pi/rpc-types.js";
 import { autoRetryEnabled } from "../pi-sdk.js";
-import { searchEntries } from "./search.js";
+import { searchEntries, textOf } from "./search.js";
 import {
 	entriesToTranscript,
 	toForkMessages,
@@ -499,12 +499,27 @@ export class TauSession extends EventEmitter {
 				return null;
 			}
 			case "navigateTree": {
+				// Read before the jump. The cache holds every branch, but a message written since the
+				// last rebuild may be missing, so ask pi once rather than lose the text.
+				let target = this.entriesCache.find((entry) => entry.id === command.entryId);
+				if (!target) {
+					const data = await this.rpc.request<{ entries: PiEntry[] }>({ type: "get_entries" }, 25_000);
+					this.entriesCache = data.entries;
+					target = data.entries.find((entry) => entry.id === command.entryId);
+				}
 				await this.rpc.request(
 					{ type: "prompt", message: `/tau-tree ${command.entryId}${command.summarize ? " --summarize" : ""}` },
 					LONG_TIMEOUT_MS,
 				);
 				await this.refreshState();
 				await this.rebuild();
+				// Navigating to a user message stands just before it and gives its text back to the
+				// editor, the way forking does. pi's RPC mode keeps that text to itself, so the host
+				// hands it to the composer.
+				if (target?.type === "message" && target.message.role === "user") {
+					const text = textOf(target.message.content);
+					if (text.length > 0) this.push({ type: "editor.set", text });
+				}
 				return null;
 			}
 			default: {

@@ -217,7 +217,11 @@ export const en = {
 	},
 	tree: {
 		title: "Session tree",
-		description: "Every message in this session, including abandoned branches. Pick an entry to continue from there.",
+		description:
+			"Every message in this session, including abandoned branches. Jump to just before a message of yours, or to where a branch ended; an answer is never cut in two.",
+		jumpBefore: "Continue from just before this message; it goes back into the composer",
+		jumpEnd: "Continue from the end of this branch",
+		branchEnd: "end of branch",
 		loading: "Loading tree…",
 		empty: "This session has no entries yet",
 		summarize: "Summarize the abandoned branch",

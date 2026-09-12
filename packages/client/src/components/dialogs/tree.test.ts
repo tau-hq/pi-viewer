@@ -5,8 +5,9 @@ import {
 	filterTree,
 	flattenTree,
 	initialCollapsed,
+	jumpTarget,
+	landingForHit,
 	markActivePath,
-	navigationTarget,
 	typeLabel,
 } from "./tree";
 
@@ -112,36 +113,74 @@ describe("filterTree", () => {
 	});
 });
 
-describe("navigationTarget", () => {
-	function entry(id: string, type: string, role: TreeNode["role"], children: TreeNode[] = []): TreeNode {
-		return {
-			id,
-			parentId: null,
-			type,
-			preview: id,
-			timestamp: "2026-09-10T00:00:00Z",
-			children,
-			onActivePath: false,
-			...(role ? { role } : {}),
-		};
-	}
+function entry(id: string, type: string, role: TreeNode["role"], children: TreeNode[] = []): TreeNode {
+	return {
+		id,
+		parentId: null,
+		type,
+		preview: id,
+		timestamp: "2026-09-10T00:00:00Z",
+		children,
+		onActivePath: false,
+		...(role ? { role } : {}),
+	};
+}
 
-	it("goes to what follows a user message, not to the message itself", () => {
+describe("jumpTarget", () => {
+	it("offers the place just before every user message", () => {
 		const answer = entry("answer", "message", "assistant");
-		expect(navigationTarget(entry("ask", "message", "user", [answer]))).toBe("answer");
+		expect(jumpTarget(entry("ask", "message", "user", [answer]))).toEqual({ entryId: "ask", kind: "beforeMessage" });
+		// Also a message nobody answered: standing before it is the state it came from.
+		expect(jumpTarget(entry("unanswered", "message", "user"))).toEqual({
+			entryId: "unanswered",
+			kind: "beforeMessage",
+		});
 	});
 
-	it("does the same for a custom message, which pi also takes back", () => {
-		const next = entry("next", "message", "assistant");
-		expect(navigationTarget(entry("custom", "custom_message", undefined, [next]))).toBe("next");
+	it("offers the end of every branch", () => {
+		expect(jumpTarget(entry("tip", "message", "assistant"))).toEqual({ entryId: "tip", kind: "branchEnd" });
+		expect(jumpTarget(entry("setting", "thinking_level_change", undefined))).toEqual({
+			entryId: "setting",
+			kind: "branchEnd",
+		});
 	});
 
-	it("stands on the entry itself for everything else", () => {
-		const assistant = entry("a", "message", "assistant", [entry("b", "message", "user")]);
-		expect(navigationTarget(assistant)).toBe("a");
+	it("offers nothing in the middle of an answer", () => {
+		const result = entry("result", "message", "toolResult", [entry("more", "message", "assistant")]);
+		const call = entry("call", "message", "assistant", [result]);
+		expect(jumpTarget(call)).toBeUndefined();
+		expect(jumpTarget(result)).toBeUndefined();
 	});
 
-	it("falls back to pi's own behaviour for a user message with nothing after it", () => {
-		expect(navigationTarget(entry("last", "message", "user"))).toBe("last");
+	it("never offers a custom message, which pi takes back like a user message", () => {
+		expect(jumpTarget(entry("custom", "custom_message", undefined))).toBeUndefined();
+	});
+});
+
+describe("landingForHit", () => {
+	// u1 -> call -> result -> answer1 -> u2 -> answer2
+	const answer2 = entry("answer2", "message", "assistant");
+	const u2 = entry("u2", "message", "user", [answer2]);
+	const answer1 = entry("answer1", "message", "assistant", [u2]);
+	const result = entry("result", "message", "toolResult", [answer1]);
+	const call = entry("call", "message", "assistant", [result]);
+	const tree = [entry("u1", "message", "user", [call])];
+
+	it("lands at the end of the answer a hit sits in, not in its middle", () => {
+		expect(landingForHit(tree, "call")).toBe("answer1");
+		expect(landingForHit(tree, "result")).toBe("answer1");
+	});
+
+	it("shows a user message together with its answer", () => {
+		expect(landingForHit(tree, "u1")).toBe("answer1");
+	});
+
+	it("lands at the end of the branch when no user message follows", () => {
+		expect(landingForHit(tree, "u2")).toBe("answer2");
+		expect(landingForHit(tree, "answer2")).toBe("answer2");
+	});
+
+	it("knows nothing about an entry that is not in the tree", () => {
+		expect(landingForHit(tree, "missing")).toBeUndefined();
 	});
 });
