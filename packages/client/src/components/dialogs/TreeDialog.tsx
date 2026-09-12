@@ -15,8 +15,9 @@ import {
 	filterTree,
 	flattenTree,
 	initialCollapsed,
+	type JumpTarget,
+	jumpTarget,
 	markActivePath,
-	navigationTarget,
 	TREE_FILTERS,
 	type TreeFilter,
 	type TreeRow,
@@ -44,13 +45,15 @@ interface RowProps {
 	row: TreeRow;
 	collapsed: boolean;
 	current: boolean;
+	/** Where picking the row goes; undefined for rows that are only there to be read. */
+	target: JumpTarget | undefined;
 	disabled: boolean;
 	onToggle: () => void;
 	onSelect: () => void;
 	scrollIntoView: boolean;
 }
 
-function Row({ row, collapsed, current, disabled, onToggle, onSelect, scrollIntoView }: RowProps) {
+function Row({ row, collapsed, current, target, disabled, onToggle, onSelect, scrollIntoView }: RowProps) {
 	const ref = useRef<HTMLDivElement>(null);
 	useEffect(() => {
 		if (scrollIntoView) ref.current?.scrollIntoView({ block: "center" });
@@ -61,6 +64,7 @@ function Row({ row, collapsed, current, disabled, onToggle, onSelect, scrollInto
 			ref={ref}
 			data-testid="tree-row"
 			data-active={node.onActivePath ? "true" : undefined}
+			data-jump={target?.kind}
 			className={cn(
 				"flex items-center gap-1.5 border-l-2 py-0.5 pr-2 text-sm",
 				node.onActivePath ? "border-primary" : "border-transparent",
@@ -82,10 +86,13 @@ function Row({ row, collapsed, current, disabled, onToggle, onSelect, scrollInto
 			<button
 				type="button"
 				onClick={onSelect}
-				disabled={disabled || current}
+				disabled={disabled || current || !target}
+				title={target?.kind === "beforeMessage" ? t("tree.jumpBefore") : target ? t("tree.jumpEnd") : undefined}
 				className={cn(
-					"flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left hover:bg-accent disabled:cursor-default",
+					"flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left disabled:cursor-default",
+					target && !current && "hover:bg-accent",
 					node.onActivePath ? "text-foreground" : "text-muted-foreground",
+					!target && !current && "opacity-55",
 					current && "bg-accent/60",
 				)}
 			>
@@ -97,6 +104,11 @@ function Row({ row, collapsed, current, disabled, onToggle, onSelect, scrollInto
 					</Badge>
 				)}
 				<span className="min-w-0 flex-1 truncate">{node.preview.replace(/\s+/g, " ") || t("tree.untitled")}</span>
+				{target?.kind === "branchEnd" && !current && (
+					<Badge variant="outline" data-testid="tree-branch-end" className="shrink-0">
+						{t("tree.branchEnd")}
+					</Badge>
+				)}
 				{current && <Badge variant="default">{t("tree.current")}</Badge>}
 				<span className="shrink-0 text-[11px] text-muted-foreground tabular-nums">{timeOf(node.timestamp)}</span>
 			</button>
@@ -151,11 +163,11 @@ export function TreeDialog() {
 		});
 
 	const select = async (node: TreeNode) => {
-		if (busy) return;
+		const target = jumpTarget(node);
+		if (busy || !target) return;
 		setBusy(true);
 		try {
-			const entryId = navigationTarget(node);
-			await command({ type: "navigateTree", entryId, ...(summarize ? { summarize: true } : {}) });
+			await command({ type: "navigateTree", entryId: target.entryId, ...(summarize ? { summarize: true } : {}) });
 			closeDialog();
 			toast("info", t("tree.navigated"));
 		} catch {
@@ -204,6 +216,7 @@ export function TreeDialog() {
 							row={row}
 							collapsed={collapsed.has(row.node.id)}
 							current={row.node.id === state?.leafId}
+							target={jumpTarget(row.node)}
 							disabled={busy}
 							onToggle={() => toggle(row.node.id)}
 							onSelect={() => void select(row.node)}

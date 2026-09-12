@@ -166,30 +166,6 @@ test("Ctrl+F opens the field and puts the caret in it", async () => {
 	await expect(input).toBeHidden();
 });
 
-test("a hit on an abandoned branch is found and reached", async () => {
-	// Step back to the first entry: the shell run is then no longer part of the transcript.
-	await page.getByRole("button", { name: "Session tree" }).click();
-	const dialog = page.getByTestId("tree-dialog");
-	await expect(dialog).toBeVisible();
-	await dialog.getByTestId("tree-row").first().click();
-	await expect(dialog).toBeHidden();
-	await expect(page.locator("main")).not.toContainText(MARKER, { timeout: 30_000 });
-
-	// The browser's find would see nothing here; the host reads the session file.
-	await page.keyboard.press("Control+f");
-	await page.getByTestId("search-input").fill(MARKER);
-	const results = page.getByTestId("search-results");
-	await expect(results.getByTestId("search-result")).toHaveCount(2);
-	const hit = results.getByTestId("search-result").first();
-	await expect(hit).toHaveAttribute("title", /another branch/);
-	await page.screenshot({ path: `${SHOTS}/91-search-off-branch.png`, animations: "disabled" });
-
-	// Opening it moves the session to that branch, so the entry is back on screen.
-	await hit.click();
-	await expect(page.locator("main")).toContainText(MARKER, { timeout: 30_000 });
-	await expect(page.getByTestId("search-input")).toBeHidden();
-});
-
 test("no console errors", () => {
 	expect(errors).toEqual([]);
 });

@@ -56,21 +56,45 @@ function collect(nodes: readonly TreeNode[], out: TreeNode[] = []): TreeNode[] {
 	return out;
 }
 
+function isUserMessage(node: TreeNode): boolean {
+	return node.type === "message" && node.role === "user";
+}
+
 /**
- * pi reads "navigate to a user message" as "take that message back": it moves the leaf to the
- * entry *before* it and puts its text into the editor, so the message and everything after it
- * leave the conversation. In a tree, where every row is a place to stand, that looks like the
- * click landed one row too high. So a user message is navigated to through the entry that
- * follows it, which keeps it in the conversation and lands where the reader pointed. Taking a
- * message back into the composer is what the fork dialog is for.
+ * Where a click on a row may take the conversation. Only two kinds of place are offered, and
+ * both are places a conversation really was:
  *
- * A user message without anything after it is the exception: there is no step forward, so it
- * goes to pi's own behaviour.
+ * - just before a user message: the answer before it is complete, and the message goes back
+ *   into the composer, exactly what the fork dialog offers;
+ * - the end of a branch: the conversation as it was left there.
+ *
+ * Everything else would cut an answer in two - an assistant message kept without the tool
+ * results it asked for, which pi then fills with "No result provided" errors - so those rows
+ * are shown for orientation and cannot be picked.
  */
-export function navigationTarget(node: TreeNode): string {
-	const rewinds = node.type === "custom_message" || (node.type === "message" && node.role === "user");
-	if (!rewinds) return node.id;
-	return node.children[0]?.id ?? node.id;
+export type JumpTarget = { entryId: string; kind: "beforeMessage" | "branchEnd" };
+
+export function jumpTarget(node: TreeNode): JumpTarget | undefined {
+	if (isUserMessage(node)) return { entryId: node.id, kind: "beforeMessage" };
+	// pi takes a custom message back just like a user message, so its end is no place to stand.
+	if (node.children.length === 0 && node.type !== "custom_message") return { entryId: node.id, kind: "branchEnd" };
+	return undefined;
+}
+
+/**
+ * Where a search hit on another branch is shown without cutting an answer: at the end of the
+ * answer it sits in, which is the entry right before the next user message on its branch, or
+ * at the end of the branch when no user message follows. Landing on that entry rather than on
+ * the user message keeps pi from putting an unrelated message into the composer.
+ */
+export function landingForHit(tree: readonly TreeNode[], entryId: string): string | undefined {
+	let cursor = collect(tree).find((node) => node.id === entryId);
+	if (!cursor) return undefined;
+	for (let next = cursor.children[0]; next; next = cursor.children[0]) {
+		if (isUserMessage(next)) return cursor.id;
+		cursor = next;
+	}
+	return cursor.id;
 }
 
 /** The filters pi's own `/tree` offers, using pi's names. */

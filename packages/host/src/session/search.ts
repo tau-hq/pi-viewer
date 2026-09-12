@@ -4,7 +4,7 @@ import type { PiEntry, PiImageContent, PiMessage, PiTextContent } from "../pi/rp
 const PREVIEW_BEFORE = 40;
 const PREVIEW_AFTER = 120;
 
-function textOf(content: string | (PiTextContent | PiImageContent)[] | undefined): string {
+export function textOf(content: string | (PiTextContent | PiImageContent)[] | undefined): string {
 	if (typeof content === "string") return content;
 	if (!Array.isArray(content)) return "";
 	return content

@@ -1,4 +1,4 @@
-import type { MessageRole, SearchMatch } from "@pi-tau/shared";
+import type { MessageRole, SearchMatch, TreeNode } from "@pi-tau/shared";
 import { ChevronDown, ChevronUp, GitBranch, History, Loader2, Search, X } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { type TKey, t } from "@/i18n";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { useSessionStore } from "@/store/session-store";
 import { useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
+import { landingForHit } from "../dialogs/tree";
 
 const DEBOUNCE_MS = 180;
 // High enough that the counter next to the field is the real number of hits, not a cap.
@@ -148,8 +149,13 @@ export function SearchBox({ sessionId }: { sessionId: string }) {
 			return;
 		}
 		// Moving the session to another branch always ends the search: it is a real change,
-		// and repeating it by holding Enter would drag the session around.
-		void command({ type: "navigateTree", entryId: match.entryId })
+		// and repeating it by holding Enter would drag the session around. It lands at the end
+		// of the answer the hit is in, never in the middle of one; see dialogs/tree.ts.
+		void command({ type: "getTree" })
+			.then((data) => {
+				const entryId = landingForHit(pickArray<TreeNode>(data, "tree"), match.entryId) ?? match.entryId;
+				return command({ type: "navigateTree", entryId });
+			})
 			.then(() => {
 				revealEntry(sessionId, match.entryId);
 				toast("info", t("search.navigated"));
