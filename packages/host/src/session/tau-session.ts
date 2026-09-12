@@ -17,6 +17,7 @@ import type {
 	SessionSnapshot,
 	SessionState,
 	ThinkingLevel,
+	ToolInfo,
 	ToolRun,
 	TreeNode,
 	UiRequest,
@@ -54,6 +55,18 @@ import {
 } from "./translate.js";
 
 const log = createLogger("session");
+
+/**
+ * pi lists its built-in tools on every platform, but not all of them can run on every one:
+ * `powershell` refuses outright anywhere but Windows ("The powershell tool is only available
+ * on Windows"). A switch that cannot do anything is worse than no switch, so it is kept out of
+ * the list a client is given. Everything else works wherever pi works: the file tools are plain
+ * Node, `bash` finds a shell or says how to get one, and `grep`/`find` use ripgrep and fd,
+ * which pi fetches when they are not on the machine already.
+ */
+export function runsOnThisHost(tool: ToolInfo, platform: string = process.platform): boolean {
+	return tool.name !== "powershell" || platform === "win32";
+}
 const RING_SIZE = 5_000;
 const LONG_TIMEOUT_MS = 10 * 60_000;
 
@@ -156,18 +169,34 @@ export class TauSession extends EventEmitter {
 		session.adopt(piState);
 		await session.rebuild();
 		const rebuilt = Date.now();
-		// Ask Tau's extension for its approval mode; without the extension it stays undefined.
-		try {
-			const data = (await session.extensionCall("tau-approval", "tau.approval", "", 8_000)) as { mode?: string };
-			if (typeof data.mode === "string") session.patchState({ approvalMode: data.mode as ApprovalMode });
-		} catch {
-			// no Tau extension in this session
-		}
+		await session.askApprovalMode();
 		// Where the wait goes when a session opens; the three add up to what the client sees.
 		log.info(
 			`session ready in ${Date.now() - began} ms (pi ${ready - began}, entries ${rebuilt - ready}, extension ${Date.now() - rebuilt})`,
 		);
 		return session;
+	}
+
+	/**
+	 * Ask Tau's extension which approval mode this session runs in. Without the extension there
+	 * is no mode and the interface hides the control, which is right. A single attempt is not:
+	 * one that fails once (a busy process, a restart caught mid-answer) would leave the session
+	 * without its mode for as long as it lives, and nothing would ever ask again. So a failure
+	 * is retried once in the background, where it costs the user nothing.
+	 */
+	async askApprovalMode(retry = true): Promise<void> {
+		try {
+			const data = (await this.extensionCall("tau-approval", "tau.approval", "", 8_000)) as { mode?: string };
+			if (typeof data.mode === "string") this.patchState({ approvalMode: data.mode as ApprovalMode });
+		} catch (error) {
+			if (!retry) {
+				log.warn(`no approval mode for this session: ${(error as Error).message}`);
+				return;
+			}
+			setTimeout(() => {
+				if (this.alive && this.state.approvalMode === undefined) void this.askApprovalMode(false);
+			}, 3_000).unref();
+		}
 	}
 
 	private adopt(piState: PiSessionState): void {
@@ -449,8 +478,13 @@ export class TauSession extends EventEmitter {
 				await this.refreshState();
 				await this.rebuild();
 				return null;
-			case "tools.list":
-				return this.extensionCall("tau-tools", "tau.tools", "list");
+			case "tools.list": {
+				const data = (await this.extensionCall("tau-tools", "tau.tools", "list")) as {
+					tools?: ToolInfo[];
+					active?: string[];
+				};
+				return { tools: (data.tools ?? []).filter((tool) => runsOnThisHost(tool)), active: data.active };
+			}
 			case "tools.set":
 				return this.extensionCall("tau-tools", "tau.tools", `set ${command.names.join(",")}`);
 			case "reloadResources": {

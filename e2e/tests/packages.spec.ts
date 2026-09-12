@@ -75,6 +75,8 @@ test("advanced options start a session with a single tool and no session file", 
 	await expect(tools.locator("#tool-read")).toBeVisible({ timeout: 30_000 });
 	await expect(tools).toContainText("1 of 1 active");
 	await expect(tools.locator("#tool-bash")).toHaveCount(0);
+	// powershell cannot run on a host that is not Windows, so it is not offered as a switch.
+	await expect(tools.locator("#tool-powershell")).toHaveCount(0);
 	await page.keyboard.press("Escape");
 	await expect(tools).toBeHidden();
 });

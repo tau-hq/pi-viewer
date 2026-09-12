@@ -1,5 +1,6 @@
 import { ChevronDown, ChevronRight, Plus, X } from "lucide-react";
 import { t } from "@/i18n";
+import { useConnectionStore } from "@/store/connection-store";
 import { thinkingLabel } from "../composer/ThinkingPicker";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -9,7 +10,7 @@ import { Select } from "../ui/select";
 import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { type AdvancedOptionsState, countAdvancedOptions, removeAt, replaceAt } from "./session-options";
-import { BUILTIN_TOOLS, THINKING_LEVEL_VALUES } from "./settings-fields";
+import { builtinToolsFor, THINKING_LEVEL_VALUES } from "./settings-fields";
 import { toggleName } from "./settings-form";
 
 interface AdvancedSessionOptionsProps {
@@ -56,9 +57,10 @@ function ToolChecklist({
 	disabled: boolean;
 	onToggle: (names: string[]) => void;
 }) {
+	const tools = builtinToolsFor(useConnectionStore((s) => s.host?.platform));
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid={testId}>
-			{BUILTIN_TOOLS.map((tool) => {
+			{tools.map((tool) => {
 				const id = `${testId}-${tool}`;
 				return (
 					<label key={tool} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-xs">
@@ -68,7 +70,7 @@ function ToolChecklist({
 							className="size-3.5 accent-primary"
 							checked={selected.includes(tool)}
 							disabled={disabled}
-							onChange={() => onToggle(toggleName(selected, tool, BUILTIN_TOOLS))}
+							onChange={() => onToggle(toggleName(selected, tool, tools))}
 						/>
 						<span className="font-mono">{tool}</span>
 					</label>

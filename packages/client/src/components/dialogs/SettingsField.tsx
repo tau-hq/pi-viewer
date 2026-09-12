@@ -2,6 +2,7 @@ import type { ConfigScope } from "@pi-tau/shared";
 import { Eraser, ListChecks, Plus, X } from "lucide-react";
 import { useState } from "react";
 import { t } from "@/i18n";
+import { useConnectionStore } from "@/store/connection-store";
 import { useUiStore } from "@/store/ui-store";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
@@ -9,7 +10,7 @@ import { IconButton } from "../ui/icon-button";
 import { Input } from "../ui/input";
 import { Select } from "../ui/select";
 import { Switch } from "../ui/switch";
-import { BUILTIN_TOOLS, type FieldSpec, fieldId } from "./settings-fields";
+import { builtinToolsFor, type FieldSpec, fieldId } from "./settings-fields";
 import {
 	asBoolean,
 	asNumber,
@@ -75,9 +76,10 @@ function EnumControl({ spec, shown, onChange, disabled }: SettingsFieldProps) {
 
 function ToolsControl({ spec, shown, onChange, disabled }: SettingsFieldProps) {
 	const selected = asStringArray(shown) ?? [];
+	const tools = builtinToolsFor(useConnectionStore((s) => s.host?.platform));
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-1" data-testid={fieldId(spec.path)}>
-			{BUILTIN_TOOLS.map((tool) => {
+			{tools.map((tool) => {
 				const id = `${fieldId(spec.path)}-${tool}`;
 				return (
 					<label key={tool} htmlFor={id} className="flex cursor-pointer items-center gap-1.5 text-xs">
@@ -88,7 +90,7 @@ function ToolsControl({ spec, shown, onChange, disabled }: SettingsFieldProps) {
 							checked={selected.includes(tool)}
 							disabled={disabled}
 							onChange={() => {
-								const next = toggleName(selected, tool, BUILTIN_TOOLS);
+								const next = toggleName(selected, tool, tools);
 								onChange(next.length === 0 ? null : next);
 							}}
 						/>
