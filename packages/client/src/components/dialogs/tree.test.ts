@@ -1,6 +1,14 @@
 import type { TreeNode } from "@pi-tau/shared";
 import { describe, expect, it } from "vitest";
-import { countNodes, filterTree, flattenTree, initialCollapsed, markActivePath, typeLabel } from "./tree";
+import {
+	countNodes,
+	filterTree,
+	flattenTree,
+	initialCollapsed,
+	markActivePath,
+	navigationTarget,
+	typeLabel,
+} from "./tree";
 
 function node(id: string, onActivePath: boolean, children: TreeNode[] = []): TreeNode {
 	return {
@@ -101,5 +109,39 @@ describe("filterTree", () => {
 	it("keeps only labeled entries", () => {
 		const rows = flattenTree(filterTree(chain, "labeled-only"), new Set());
 		expect(rows.map((row) => row.node.id)).toEqual(["d"]);
+	});
+});
+
+describe("navigationTarget", () => {
+	function entry(id: string, type: string, role: TreeNode["role"], children: TreeNode[] = []): TreeNode {
+		return {
+			id,
+			parentId: null,
+			type,
+			preview: id,
+			timestamp: "2026-09-10T00:00:00Z",
+			children,
+			onActivePath: false,
+			...(role ? { role } : {}),
+		};
+	}
+
+	it("goes to what follows a user message, not to the message itself", () => {
+		const answer = entry("answer", "message", "assistant");
+		expect(navigationTarget(entry("ask", "message", "user", [answer]))).toBe("answer");
+	});
+
+	it("does the same for a custom message, which pi also takes back", () => {
+		const next = entry("next", "message", "assistant");
+		expect(navigationTarget(entry("custom", "custom_message", undefined, [next]))).toBe("next");
+	});
+
+	it("stands on the entry itself for everything else", () => {
+		const assistant = entry("a", "message", "assistant", [entry("b", "message", "user")]);
+		expect(navigationTarget(assistant)).toBe("a");
+	});
+
+	it("falls back to pi's own behaviour for a user message with nothing after it", () => {
+		expect(navigationTarget(entry("last", "message", "user"))).toBe("last");
 	});
 });

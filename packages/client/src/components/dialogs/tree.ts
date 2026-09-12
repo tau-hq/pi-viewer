@@ -56,6 +56,23 @@ function collect(nodes: readonly TreeNode[], out: TreeNode[] = []): TreeNode[] {
 	return out;
 }
 
+/**
+ * pi reads "navigate to a user message" as "take that message back": it moves the leaf to the
+ * entry *before* it and puts its text into the editor, so the message and everything after it
+ * leave the conversation. In a tree, where every row is a place to stand, that looks like the
+ * click landed one row too high. So a user message is navigated to through the entry that
+ * follows it, which keeps it in the conversation and lands where the reader pointed. Taking a
+ * message back into the composer is what the fork dialog is for.
+ *
+ * A user message without anything after it is the exception: there is no step forward, so it
+ * goes to pi's own behaviour.
+ */
+export function navigationTarget(node: TreeNode): string {
+	const rewinds = node.type === "custom_message" || (node.type === "message" && node.role === "user");
+	if (!rewinds) return node.id;
+	return node.children[0]?.id ?? node.id;
+}
+
 /** The filters pi's own `/tree` offers, using pi's names. */
 export type TreeFilter = "all" | "no-tools" | "user-only" | "labeled-only";
 
