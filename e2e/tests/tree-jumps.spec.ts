@@ -6,10 +6,10 @@ import { expect, type Page, test } from "@playwright/test";
 import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp } from "./helpers";
 
 /**
- * The session tree only lets the conversation stand where it really stood: just before a user
- * message, or at the end of a branch. It never cuts an answer in two - an assistant message kept
- * without its tool results would reach the model as a failed call. The session is imported from
- * a file with one real tool round, so no model is needed.
+ * The session tree only lets the conversation stand where nothing is half done: just before a
+ * user message, at the end of a branch, or at a clean point inside an answer. It never cuts a
+ * tool call off from its result - that would reach the model as a failed call. The session is
+ * imported from a file with one real tool round, so no model is needed.
  */
 test.describe.configure({ mode: "serial" });
 
@@ -103,7 +103,7 @@ test.afterAll(async () => {
 	await page.close();
 });
 
-test("only the place before a user message and the end of a branch can be picked", async () => {
+test("only places where nothing is half done can be picked", async () => {
 	await page.getByRole("button", { name: "Session tree" }).click();
 	const dialog = page.getByTestId("tree-dialog");
 	await expect(dialog).toBeVisible();
@@ -111,11 +111,12 @@ test("only the place before a user message and the end of a branch can be picked
 
 	await expect(row("tau-question-one")).toHaveAttribute("data-jump", "beforeMessage");
 	await expect(row("tau-question-two")).toHaveAttribute("data-jump", "beforeMessage");
-	// The middle of an answer - the tool call, its result, the text after it - is only to be read.
+	// The tool call is still waiting for its result there, so that row is only to be read.
 	await expect(row("[ls]")).not.toHaveAttribute("data-jump", /./);
-	await expect(row("README.md")).not.toHaveAttribute("data-jump", /./);
-	await expect(row("tau-answer-one")).not.toHaveAttribute("data-jump", /./);
-	await expect(row("tau-answer-one").getByRole("button").last()).toBeDisabled();
+	await expect(row("[ls]").getByRole("button").last()).toBeDisabled();
+	// After the result the round is complete, and after the text the answer is: both are clean.
+	await expect(row("README.md")).toHaveAttribute("data-jump", "cleanPoint");
+	await expect(row("tau-answer-one")).toHaveAttribute("data-jump", "cleanPoint");
 	await page.screenshot({ path: `${SHOTS}/152-tree-jumps.png`, animations: "disabled" });
 });
 
@@ -136,6 +137,18 @@ test("jumping before a message keeps the answer before it whole and gives the me
 	// Exactly what the fork dialog does: the message is back in the composer, ready to change.
 	await expect(composer(page)).toHaveValue("tau-question-two");
 	await composer(page).fill("");
+});
+
+test("a clean point inside an answer is a place to continue from, with an empty composer", async () => {
+	await page.getByRole("button", { name: "Session tree" }).click();
+	const dialog = page.getByTestId("tree-dialog");
+	await expect(dialog).toBeVisible();
+	// Stand right after the tool result: the round is complete, the text answer is not there yet.
+	await dialog.getByTestId("tree-row").filter({ hasText: "README.md" }).first().getByRole("button").last().click();
+	await expect(dialog).toBeHidden();
+	await expect(page.locator("main")).not.toContainText("tau-answer-one", { timeout: 30_000 });
+	await expect(page.locator("main")).toContainText("tau-question-one");
+	await expect(composer(page)).toHaveValue("");
 });
 
 test("a search hit on the abandoned branch lands at the end of its answer", async () => {

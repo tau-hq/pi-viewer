@@ -1,7 +1,7 @@
 import type { TreeNode } from "@pi-tau/shared";
 import { ChevronRight, Tag } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { t } from "@/i18n";
+import { type TKey, t } from "@/i18n";
 import { pickArray, pickString } from "@/lib/result-data";
 import { cn } from "@/lib/utils";
 import { useSessionsStore } from "@/store/sessions-store";
@@ -40,6 +40,12 @@ function timeOf(timestamp: string): string {
 	const date = new Date(timestamp);
 	return Number.isNaN(date.getTime()) ? "" : date.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
+
+const JUMP_TITLE: Record<JumpTarget["kind"], TKey> = {
+	beforeMessage: "tree.jumpBefore",
+	branchEnd: "tree.jumpEnd",
+	cleanPoint: "tree.jumpClean",
+};
 
 interface RowProps {
 	row: TreeRow;
@@ -87,7 +93,7 @@ function Row({ row, collapsed, current, target, disabled, onToggle, onSelect, sc
 				type="button"
 				onClick={onSelect}
 				disabled={disabled || current || !target}
-				title={target?.kind === "beforeMessage" ? t("tree.jumpBefore") : target ? t("tree.jumpEnd") : undefined}
+				title={target ? t(JUMP_TITLE[target.kind]) : undefined}
 				className={cn(
 					"flex min-w-0 flex-1 items-center gap-2 rounded px-1.5 py-1 text-left disabled:cursor-default",
 					target && !current && "hover:bg-accent",

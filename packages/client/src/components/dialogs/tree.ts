@@ -61,23 +61,35 @@ function isUserMessage(node: TreeNode): boolean {
 }
 
 /**
- * Where a click on a row may take the conversation. Only two kinds of place are offered, and
- * both are places a conversation really was:
+ * Where a click on a row may take the conversation. Three kinds of place are offered, all of
+ * them places where nothing is half done:
  *
  * - just before a user message: the answer before it is complete, and the message goes back
  *   into the composer, exactly what the fork dialog offers;
- * - the end of a branch: the conversation as it was left there.
+ * - the end of a branch: the conversation as it was left there;
+ * - a clean point inside an answer: after a text answer, or after the last result of a tool
+ *   round, so the model continues from there. The host marks these (`cleanCut`), because only it
+ *   sees which tool calls are still waiting for their results.
  *
- * Everything else would cut an answer in two - an assistant message kept without the tool
- * results it asked for, which pi then fills with "No result provided" errors - so those rows
- * are shown for orientation and cannot be picked.
+ * What is left would cut an answer in two - an assistant message kept without the tool results
+ * it asked for, which pi then fills with "No result provided" errors - so those rows are shown
+ * for orientation and cannot be picked.
  */
-export type JumpTarget = { entryId: string; kind: "beforeMessage" | "branchEnd" };
+export type JumpTarget = { entryId: string; kind: "beforeMessage" | "branchEnd" | "cleanPoint" };
+
+function isAnswerPart(node: TreeNode): boolean {
+	return (
+		node.type === "message" &&
+		(node.role === "assistant" || node.role === "toolResult" || node.role === "bashExecution")
+	);
+}
 
 export function jumpTarget(node: TreeNode): JumpTarget | undefined {
 	if (isUserMessage(node)) return { entryId: node.id, kind: "beforeMessage" };
 	// pi takes a custom message back just like a user message, so its end is no place to stand.
-	if (node.children.length === 0 && node.type !== "custom_message") return { entryId: node.id, kind: "branchEnd" };
+	if (node.type === "custom_message") return undefined;
+	if (node.children.length === 0) return { entryId: node.id, kind: "branchEnd" };
+	if (node.cleanCut === true && isAnswerPart(node)) return { entryId: node.id, kind: "cleanPoint" };
 	return undefined;
 }
 

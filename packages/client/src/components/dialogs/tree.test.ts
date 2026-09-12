@@ -113,7 +113,13 @@ describe("filterTree", () => {
 	});
 });
 
-function entry(id: string, type: string, role: TreeNode["role"], children: TreeNode[] = []): TreeNode {
+function entry(
+	id: string,
+	type: string,
+	role: TreeNode["role"],
+	children: TreeNode[] = [],
+	cleanCut?: boolean,
+): TreeNode {
 	return {
 		id,
 		parentId: null,
@@ -123,6 +129,7 @@ function entry(id: string, type: string, role: TreeNode["role"], children: TreeN
 		children,
 		onActivePath: false,
 		...(role ? { role } : {}),
+		...(cleanCut === undefined ? {} : { cleanCut }),
 	};
 }
 
@@ -145,11 +152,25 @@ describe("jumpTarget", () => {
 		});
 	});
 
-	it("offers nothing in the middle of an answer", () => {
-		const result = entry("result", "message", "toolResult", [entry("more", "message", "assistant")]);
-		const call = entry("call", "message", "assistant", [result]);
+	it("offers a point inside an answer only where nothing is half done", () => {
+		const more = entry("more", "message", "assistant");
+		// The host marks the call as unclean (its result is still to come) and the result as clean.
+		const result = entry("result", "message", "toolResult", [more], true);
+		const call = entry("call", "message", "assistant", [result], false);
 		expect(jumpTarget(call)).toBeUndefined();
-		expect(jumpTarget(result)).toBeUndefined();
+		expect(jumpTarget(result)).toEqual({ entryId: "result", kind: "cleanPoint" });
+		const text = entry("text", "message", "assistant", [entry("next", "message", "user")], true);
+		expect(jumpTarget(text)).toEqual({ entryId: "text", kind: "cleanPoint" });
+	});
+
+	it("does not offer bookkeeping entries as clean points", () => {
+		const setting = entry("setting", "thinking_level_change", undefined, [entry("x", "message", "user")], true);
+		expect(jumpTarget(setting)).toBeUndefined();
+	});
+
+	it("offers nothing where the host did not say it is clean", () => {
+		const unknown = entry("unknown", "message", "assistant", [entry("x", "message", "user")]);
+		expect(jumpTarget(unknown)).toBeUndefined();
 	});
 
 	it("never offers a custom message, which pi takes back like a user message", () => {
