@@ -312,6 +312,37 @@ function entryPreview(entry: PiEntry): { preview: string; role?: Message["role"]
  * customType starts with "tau.") are removed and their children re-attached to the
  * parent. The active path is derived from the tree itself via parentId links.
  */
+/**
+ * The tool calls still waiting for a result once `entry` has been read. An assistant message
+ * opens its calls; a tool result closes its own. pi drops an answer that ended in an error or
+ * was aborted from the context entirely, so its calls never open.
+ */
+function pendingAfter(entry: PiEntry, waiting: ReadonlySet<string>): ReadonlySet<string> {
+	if (entry.type !== "message") return waiting;
+	const message = entry.message;
+	if (message.role === "assistant") {
+		if (brokeOff(entry)) return waiting;
+		const calls = (message.content ?? []).filter((block) => block.type === "toolCall").map((block) => block.id);
+		if (calls.length === 0) return waiting;
+		return new Set([...waiting, ...calls]);
+	}
+	if (message.role === "toolResult" && waiting.has(message.toolCallId)) {
+		const next = new Set(waiting);
+		next.delete(message.toolCallId);
+		return next;
+	}
+	return waiting;
+}
+
+/** An answer that stopped with an error or was aborted: never a place where a conversation stood whole. */
+function brokeOff(entry: PiEntry): boolean {
+	return (
+		entry.type === "message" &&
+		entry.message.role === "assistant" &&
+		(entry.message.stopReason === "error" || entry.message.stopReason === "aborted")
+	);
+}
+
 export function toTree(nodes: PiTreeNode[], leafId: string | null | undefined): TreeNode[] {
 	const parentOf = new Map<string, string | null>();
 	const index = (list: PiTreeNode[]): void => {
@@ -350,8 +381,10 @@ export function toTree(nodes: PiTreeNode[], leafId: string | null | undefined): 
 		activeIds.add(cursor);
 		cursor = parentOf.get(cursor) ?? null;
 	}
-	const convert = (node: PiTreeNode, parentId: string | null): TreeNode[] => {
-		if (isBookkeeping(node)) return node.children.flatMap((child) => convert(child, parentId));
+	// Each path carries the tool calls still waiting for a result; a branch gets its own copy.
+	const convert = (node: PiTreeNode, parentId: string | null, waiting: ReadonlySet<string>): TreeNode[] => {
+		const pending = pendingAfter(node.entry, waiting);
+		if (isBookkeeping(node)) return node.children.flatMap((child) => convert(child, parentId, pending));
 		const { preview, role } = entryPreview(node.entry);
 		const out: TreeNode = {
 			id: node.entry.id,
@@ -359,14 +392,15 @@ export function toTree(nodes: PiTreeNode[], leafId: string | null | undefined): 
 			type: node.entry.type,
 			preview,
 			timestamp: node.entry.timestamp,
-			children: node.children.flatMap((child) => convert(child, node.entry.id)),
+			children: node.children.flatMap((child) => convert(child, node.entry.id, pending)),
 			onActivePath: activeIds.has(node.entry.id),
+			cleanCut: pending.size === 0 && !brokeOff(node.entry),
 		};
 		if (role !== undefined) out.role = role;
 		if (node.label !== undefined) out.label = node.label;
 		return [out];
 	};
-	return nodes.flatMap((node) => convert(node, node.entry.parentId));
+	return nodes.flatMap((node) => convert(node, node.entry.parentId, new Set()));
 }
 
 export function toForkMessages(

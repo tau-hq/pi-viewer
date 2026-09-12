@@ -454,6 +454,13 @@ export interface TreeNode {
 	label?: string;
 	children: TreeNode[];
 	onActivePath: boolean;
+	/**
+	 * The conversation could stand right after this entry without anything half done: no tool
+	 * call on the way here is still waiting for its result, and the entry is not an answer that
+	 * broke off with an error. Where it is false, pi would have to invent "No result provided"
+	 * errors for the model.
+	 */
+	cleanCut?: boolean;
 }
 
 // ---------------------------------------------------------------------------
