@@ -30,6 +30,16 @@ export interface FieldGroup {
 /** pi's built-in tools, in the order pi lists them. */
 export const BUILTIN_TOOLS: readonly string[] = ["read", "bash", "powershell", "edit", "write", "grep", "find", "ls"];
 
+/**
+ * The tools worth offering on a given host. pi refuses `powershell` anywhere but Windows, so
+ * listing it there would be a switch that cannot do anything; the host filters its own tool
+ * list the same way, see session/tau-session.ts.
+ */
+export function builtinToolsFor(platform: string | undefined): readonly string[] {
+	if (platform === undefined || platform === "win32") return BUILTIN_TOOLS;
+	return BUILTIN_TOOLS.filter((tool) => tool !== "powershell");
+}
+
 export const THINKING_LEVEL_VALUES: readonly ThinkingLevel[] = [
 	"off",
 	"minimal",
