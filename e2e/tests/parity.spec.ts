@@ -218,7 +218,9 @@ test("queued entries can be removed one by one", async () => {
 });
 
 test("copying the last answer says so when there is none", async () => {
-	await openMenu("menu-copy-last");
+	// pi's /copy; the overflow menu no longer carries it.
+	await composer(page).fill("/copy");
+	await composer(page).press("Enter");
 	await expect(toasts(page)).toContainText("This session has no answer to copy yet");
 });
 
