@@ -75,7 +75,7 @@ export function StatusBar({ sessionId }: { sessionId: string }) {
 			<Item className="font-mono" title={model ? `${model.provider} · ${model.id}` : undefined}>
 				{model ? model.id : t("status.noModel")}
 			</Item>
-			{model?.reasoning && thinkingLevel && <Item>{thinkingLabel(thinkingLevel)}</Item>}
+			{model?.reasoning && thinkingLevel && <Item title={t("status.thinking")}>{thinkingLabel(thinkingLevel)}</Item>}
 			{approvalMode && (
 				<Item title={t("mode.title")}>
 					<span data-testid="status-mode">{t(APPROVAL_MODE_TEXT[approvalMode].title)}</span>
@@ -87,7 +87,7 @@ export function StatusBar({ sessionId }: { sessionId: string }) {
 						{formatPercent(percent)}
 						{stats.contextUsage ? `/${formatTokens(stats.contextUsage.contextWindow)}` : ""}
 					</Item>
-					<Item className="font-mono tabular-nums">
+					<Item className="font-mono tabular-nums" title={t("status.tokensHint")}>
 						{t("status.tokens", { input: formatTokens(stats.tokens.input), output: formatTokens(stats.tokens.output) })}
 					</Item>
 					<Item className="font-mono tabular-nums" title={t("status.cost")}>
