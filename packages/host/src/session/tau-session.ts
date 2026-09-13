@@ -170,6 +170,9 @@ export class TauSession extends EventEmitter {
 		await session.rebuild();
 		const rebuilt = Date.now();
 		await session.askApprovalMode();
+		// The footer wants context, tokens and cost right away, not after the first run; the
+		// answer arrives as an event moments after the session shows.
+		void session.refreshStats().catch(() => undefined);
 		// Where the wait goes when a session opens; the three add up to what the client sees.
 		log.info(
 			`session ready in ${Date.now() - began} ms (pi ${ready - began}, entries ${rebuilt - ready}, extension ${Date.now() - rebuilt})`,
@@ -582,9 +585,14 @@ export class TauSession extends EventEmitter {
 	async refreshState(): Promise<void> {
 		const piState = await this.rpc.request<PiSessionState>({ type: "get_state" });
 		const next = toSessionState(piState, this.cwd, this.rpc.alive, this.state.autoRetryEnabled);
+		// pi's state knows nothing of Tau's own fields, so a refresh must carry every one of
+		// them over. The approval mode was missing here once: the host forgot it on the first
+		// refresh, nobody noticed while only diffs went out, and the next snapshot - a reload,
+		// a session switch - showed a session without the control.
 		next.needsInput = this.state.needsInput;
 		next.bashRunning = this.state.bashRunning;
 		next.lastRunFailed = this.state.lastRunFailed;
+		if (this.state.approvalMode !== undefined) next.approvalMode = this.state.approvalMode;
 		const changed: Partial<SessionState> = {};
 		for (const key of Object.keys(next) as (keyof SessionState)[]) {
 			if (JSON.stringify(next[key]) !== JSON.stringify(this.state[key]))

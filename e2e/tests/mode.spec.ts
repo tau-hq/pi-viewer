@@ -1,5 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
-import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp } from "./helpers";
+import { collectErrors, composer, deleteE2eSessions, e2eSessionName, openApp, toasts } from "./helpers";
 
 // One session for the whole file and no LLM prompt: only the approval mode is exercised.
 test.describe.configure({ mode: "serial" });
@@ -68,6 +68,13 @@ test("picking Auto reaches the status bar and survives a reload", async () => {
 	await expect(page.getByTestId("status-mode").locator("xpath=..")).not.toHaveClass(/text-|font-medium|font-bold/);
 	await expect(page.getByTestId("mode-trigger")).not.toHaveClass(/font-medium|font-bold/);
 	await page.screenshot({ path: `${SHOTS}/71-auto-mode.png` });
+
+	// A state refresh on the host rebuilds its state from pi's; the mode must survive that,
+	// or the next snapshot shows a session without the control. Reloading resources is the
+	// cheapest way to force such a refresh.
+	await page.getByRole("button", { name: "More actions" }).click();
+	await page.getByTestId("menu-reload-resources").click();
+	await expect(toasts(page)).toContainText("Extensions, skills and prompts reloaded", { timeout: 60_000 });
 
 	// The host keeps the mode, so a fresh page shows it again.
 	await page.reload({ waitUntil: "networkidle" });
