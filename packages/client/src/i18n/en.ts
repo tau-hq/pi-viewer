@@ -389,6 +389,8 @@ export const en = {
 	status: {
 		context: "context",
 		cost: "cost",
+		thinking: "thinking level",
+		tokensHint: "tokens · ↑ input ↓ output",
 		streaming: "Working…",
 		compacting: "Compacting…",
 		retry: "Retry {attempt}/{max} in {seconds}s",
