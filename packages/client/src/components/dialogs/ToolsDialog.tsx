@@ -1,5 +1,5 @@
 import type { ToolInfo, ToolRequirement } from "@pi-tau/shared";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "@/i18n";
 import { pickArray } from "@/lib/result-data";
 import { useSessionsStore } from "@/store/sessions-store";
@@ -53,11 +53,14 @@ export function ToolsDialog() {
 	const [failed, setFailed] = useState(false);
 	const [busy, setBusy] = useState(false);
 
-	const loadRequirements = () =>
-		getTransport()
-			.send({ type: "tools.requirements" })
-			.then((data) => setRequirements(pickArray<ToolRequirement>(data, "requirements")))
-			.catch(() => setRequirements([]));
+	const loadRequirements = useCallback(
+		() =>
+			getTransport()
+				.send({ type: "tools.requirements" })
+				.then((data) => setRequirements(pickArray<ToolRequirement>(data, "requirements")))
+				.catch(() => setRequirements([])),
+		[],
+	);
 
 	useEffect(() => {
 		if (!open) return;
@@ -79,7 +82,7 @@ export function ToolsDialog() {
 		return () => {
 			cancelled = true;
 		};
-	}, [open, commandSilent]);
+	}, [open, commandSilent, loadRequirements]);
 
 	/** Put the tool's own switch where the user asked for it. */
 	const setActive = async (name: string, enabled: boolean) => {

@@ -1,9 +1,9 @@
-import { Download, FolderOpen, GitBranch, GitFork, Layers, RotateCw, SquareTerminal, Wrench } from "lucide-react";
+import { FolderOpen, GitBranch, GitFork, Layers, RotateCw, SquareTerminal, Wrench } from "lucide-react";
 import { t } from "@/i18n";
 import { shortenPath } from "@/lib/format";
 import { useConnectionStore } from "@/store/connection-store";
 import { useSessionStore } from "@/store/session-store";
-import { exportSessionHtml, useSessionsStore } from "@/store/sessions-store";
+import { useSessionsStore } from "@/store/sessions-store";
 import { useTerminalStore } from "@/store/terminal-store";
 import { useUiStore } from "@/store/ui-store";
 import { DrawerButton } from "../sidebar/Sidebar";
@@ -13,6 +13,7 @@ import { IconButton } from "../ui/icon-button";
 import { Kbd } from "../ui/kbd";
 import { Separator } from "../ui/separator";
 import { Spinner } from "../ui/spinner";
+import { ExportMenu } from "./ExportMenu";
 import { HeaderMenu } from "./HeaderMenu";
 import { SearchBox } from "./SearchBox";
 import { SessionNameEditor } from "./SessionNameEditor";
@@ -97,12 +98,7 @@ export function SessionHeader({ sessionId }: { sessionId: string }) {
 						disabled={!alive}
 						onClick={() => openDialog("compact")}
 					/>
-					<IconButton
-						label={t("header.export")}
-						icon={<Download />}
-						disabled={!alive}
-						onClick={() => void exportSessionHtml(sessionId).catch(() => undefined)}
-					/>
+					<ExportMenu sessionId={sessionId} alive={alive} />
 				</div>
 				<StatsPopover sessionId={sessionId} />
 				<HeaderMenu sessionId={sessionId} alive={alive} />

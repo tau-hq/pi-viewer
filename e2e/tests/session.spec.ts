@@ -92,8 +92,11 @@ test("tool approval: Deny blocks the tool", async () => {
 	expect(errors).toEqual([]);
 });
 
-test("downloads the session as JSONL from the header menu", async () => {
-	await page.getByRole("button", { name: "More actions" }).click();
+test("downloads the session as JSONL from the export menu", async () => {
+	await page.getByRole("button", { name: "Export", exact: true }).click();
+	// Both downloads sit behind the export button, and the overflow menu no longer carries JSONL.
+	await expect(page.getByTestId("export-menu")).toContainText("Download HTML");
+	await page.screenshot({ path: "/srv/pi-tau/e2e/shots/153-export-menu.png", animations: "disabled" });
 	const [download] = await Promise.all([page.waitForEvent("download"), page.getByTestId("menu-export-jsonl").click()]);
 	expect(download.suggestedFilename()).toMatch(/\.jsonl$/);
 	const stream = await download.createReadStream();
@@ -103,10 +106,19 @@ test("downloads the session as JSONL from the header menu", async () => {
 	expect(JSON.parse(first)).toMatchObject({ type: "session" });
 });
 
+test("the overflow menu leaves the downloads to the export button", async () => {
+	await page.getByRole("button", { name: "More actions" }).click();
+	await expect(page.getByRole("menuitem", { name: "Download JSONL" })).toBeHidden();
+	await page.keyboard.press("Escape");
+});
+
 test("the export button downloads the HTML and leaves nothing on the host", async () => {
 	const [download] = await Promise.all([
 		page.waitForEvent("download"),
-		page.getByRole("button", { name: "Export HTML" }).click(),
+		page
+			.getByRole("button", { name: "Export", exact: true })
+			.click()
+			.then(() => page.getByTestId("menu-export-html").click()),
 	]);
 	expect(download.suggestedFilename()).toMatch(/^tau-session-.*\.html$/);
 	const stream = await download.createReadStream();
@@ -120,8 +132,9 @@ test("the export button downloads the HTML and leaves nothing on the host", asyn
 
 	// A second click within the cooldown starts nothing, and the button gives no sign of it.
 	const again = page.waitForEvent("download", { timeout: 3_000 }).catch(() => undefined);
-	await page.getByRole("button", { name: "Export HTML" }).click();
-	await expect(page.getByRole("button", { name: "Export HTML" })).toBeEnabled();
+	await page.getByRole("button", { name: "Export", exact: true }).click();
+	await page.getByTestId("menu-export-html").click();
+	await expect(page.getByRole("button", { name: "Export", exact: true })).toBeEnabled();
 	expect(await again).toBeUndefined();
 });
 

@@ -6,8 +6,8 @@ export const MIN_HIGHLIGHT_LENGTH = 3;
 
 /** pi's entry ids are plain, but a selector built from data never goes in unescaped. */
 function cssEscape(value: string): string {
-	const escape = (globalThis as { CSS?: { escape?: (input: string) => string } }).CSS?.escape;
-	return escape ? escape(value) : value.replace(/["\\]/g, "\\$&");
+	const cssEscapeFn = (globalThis as { CSS?: { escape?: (input: string) => string } }).CSS?.escape;
+	return cssEscapeFn ? cssEscapeFn(value) : value.replace(/["\\]/g, "\\$&");
 }
 
 /** Keep the marked word inside the view, with a little air above and below it. */
