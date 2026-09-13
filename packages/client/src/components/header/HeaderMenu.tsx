@@ -80,7 +80,6 @@ export function HeaderMenu({ sessionId, alive }: HeaderMenuProps) {
 				<DropdownMenuItem data-testid="menu-commands" disabled={!alive} onSelect={() => openDialog("commands")}>
 					<BookOpen /> {t("header.commands")}
 				</DropdownMenuItem>
-				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					data-testid="menu-session-settings"
 					disabled={!alive}
