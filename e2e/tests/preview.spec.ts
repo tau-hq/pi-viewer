@@ -79,9 +79,11 @@ test("a session without a running process shows its conversation before pi has s
 	await expect(page.locator("header")).toContainText("Starting", { timeout: 5_000 });
 	await expect(page.locator("main")).toContainText(MARKER);
 
-	// And once pi has attached, the composer takes messages again.
+	// And once pi has attached, the composer takes messages again, and the footer carries the
+	// session's numbers without waiting for a first run.
 	await expect(page.locator("header")).not.toContainText("Starting", { timeout: 30_000 });
 	await expect(composer(page)).toBeEnabled();
 	await expect(page.locator("main")).toContainText(MARKER);
+	await expect(page.locator("footer")).toContainText("%", { timeout: 15_000 });
 	expect(errors).toEqual([]);
 });
