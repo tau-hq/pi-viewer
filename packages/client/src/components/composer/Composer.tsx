@@ -2,7 +2,6 @@ import type { FileMatch } from "@pi-tau/shared";
 import { ImagePlus, ListPlus, Send, Square, Zap } from "lucide-react";
 import { type KeyboardEvent, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { t } from "@/i18n";
-import { cn } from "@/lib/utils";
 import { useConnectionStore } from "@/store/connection-store";
 import { useSessionStore } from "@/store/session-store";
 import { useUiStore } from "@/store/ui-store";

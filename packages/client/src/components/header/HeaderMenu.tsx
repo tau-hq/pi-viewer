@@ -68,18 +68,18 @@ export function HeaderMenu({ sessionId, alive }: HeaderMenuProps) {
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					className="md:hidden"
-					disabled={!alive}
-					onSelect={() => void exportSessionHtml(sessionId).catch(() => undefined)}
-				>
-					<Download /> {t("header.export")}
-				</DropdownMenuItem>
-				<DropdownMenuSeparator className="md:hidden" />
-				<DropdownMenuItem
-					data-testid="menu-export-jsonl"
 					onSelect={() => void exportSessionJsonl(sessionId).catch(() => undefined)}
 				>
 					<FileDown /> {t("header.exportJsonl")}
 				</DropdownMenuItem>
+				<DropdownMenuItem
+					className="md:hidden"
+					disabled={!alive}
+					onSelect={() => void exportSessionHtml(sessionId).catch(() => undefined)}
+				>
+					<Download /> {t("header.downloadHtml")}
+				</DropdownMenuItem>
+				<DropdownMenuSeparator className="md:hidden" />
 				<DropdownMenuItem data-testid="menu-commands" disabled={!alive} onSelect={() => openDialog("commands")}>
 					<BookOpen /> {t("header.commands")}
 				</DropdownMenuItem>
