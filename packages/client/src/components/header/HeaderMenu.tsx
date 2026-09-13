@@ -1,7 +1,5 @@
 import {
 	BookOpen,
-	ClipboardCopy,
-	Copy,
 	Download,
 	Ellipsis,
 	FileDown,
@@ -16,7 +14,7 @@ import {
 	Wrench,
 } from "lucide-react";
 import { t } from "@/i18n";
-import { copyLastAnswer, exportSessionHtml, exportSessionJsonl, useSessionsStore } from "@/store/sessions-store";
+import { exportSessionHtml, exportSessionJsonl, useSessionsStore } from "@/store/sessions-store";
 import { toast, useUiStore } from "@/store/ui-store";
 import {
 	DropdownMenu,
@@ -38,7 +36,6 @@ interface HeaderMenuProps {
  */
 export function HeaderMenu({ sessionId, alive }: HeaderMenuProps) {
 	const openDialog = useUiStore((s) => s.openDialog);
-	const clone = useSessionsStore((s) => s.clone);
 	const command = useSessionsStore((s) => s.command);
 
 	const reloadResources = async () => {
@@ -82,15 +79,6 @@ export function HeaderMenu({ sessionId, alive }: HeaderMenuProps) {
 				<DropdownMenuSeparator className="md:hidden" />
 				<DropdownMenuItem data-testid="menu-commands" disabled={!alive} onSelect={() => openDialog("commands")}>
 					<BookOpen /> {t("header.commands")}
-				</DropdownMenuItem>
-				<DropdownMenuItem disabled={!alive} onSelect={() => void clone().catch(() => undefined)}>
-					<Copy /> {t("header.clone")}
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					data-testid="menu-copy-last"
-					onSelect={() => void copyLastAnswer(sessionId).catch(() => undefined)}
-				>
-					<ClipboardCopy /> {t("header.copyLast")}
 				</DropdownMenuItem>
 				<DropdownMenuSeparator />
 				<DropdownMenuItem
