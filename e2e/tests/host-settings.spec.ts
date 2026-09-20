@@ -38,18 +38,30 @@ test("providers dialog lists nebius as configured", async () => {
 	// Configured providers come first and offer a way out.
 	await expect(dialog.locator("[data-provider]").first()).toHaveAttribute("data-provider", "nebius");
 	await expect(nebius.getByRole("button", { name: "Log out" })).toBeVisible();
-	// A provider with both methods shows both buttons plus the subscription hint.
-	const vendor = dialog.locator('[data-provider="vendor"]');
-	await expect(vendor.getByRole("button", { name: "API key" })).toBeVisible();
-	await expect(vendor.getByRole("button", { name: /Sign in/ })).toContainText("subscription");
+	// Some provider in pi's list offers both methods; which one is pi's business, so the
+	// test takes the first such row rather than naming a vendor.
+	const both = dialog
+		.locator("[data-provider]")
+		.filter({ has: page.getByRole("button", { name: "API key" }) })
+		.filter({ has: page.getByRole("button", { name: /Sign in/ }) })
+		.first();
+	await expect(both.getByRole("button", { name: "API key" })).toBeVisible();
+	await expect(both.getByRole("button", { name: /Sign in/ })).toContainText("subscription");
 });
 
-test("vendor api key login shows a secret prompt and cancels cleanly", async () => {
-	const vendor = page.getByTestId("providers-dialog").locator('[data-provider="vendor"]');
-	await vendor.getByRole("button", { name: "API key" }).click();
+test("an api key login shows a secret prompt and cancels cleanly", async () => {
+	const dialog = page.getByTestId("providers-dialog");
+	// A provider that also offers a subscription sign-in asks for a plain secret on the API
+	// key path; providers with multi-step key flows (cloud credentials) do not qualify here.
+	const row = dialog
+		.locator("[data-provider]")
+		.filter({ has: page.getByRole("button", { name: "API key" }) })
+		.filter({ has: page.getByRole("button", { name: /Sign in/ }) })
+		.first();
+	await row.getByRole("button", { name: "API key" }).click();
 	const login = page.getByTestId("login-dialog");
 	await expect(login).toBeVisible();
-	await expect(login).toContainText("Sign in to Vendor");
+	await expect(login).toContainText("Sign in to");
 	const secret = page.getByTestId("auth-secret");
 	await expect(secret).toBeVisible({ timeout: 30_000 });
 	// A secret is never echoed and never leaves the input before it is sent.

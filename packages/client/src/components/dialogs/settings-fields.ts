@@ -237,13 +237,6 @@ export const SETTINGS_GROUPS: readonly FieldGroup[] = [
 				hint: "settingsForm.fields.imagesBlockImages.hint",
 				fallback: false,
 			},
-			{
-				path: "warnings.vendorExtraUsage",
-				kind: "boolean",
-				label: "settingsForm.fields.warningsVendorExtraUsage.label",
-				hint: "settingsForm.fields.warningsVendorExtraUsage.hint",
-				fallback: true,
-			},
 		],
 	},
 	{
