@@ -97,8 +97,9 @@ test("pi's own terminal UI runs in a tab and /quit ends it", async () => {
 	await page.getByTestId("terminal-new-pi").click();
 	await expect(tabs()).toHaveCount(1);
 	await expect(tabs().first()).toHaveAttribute("data-kind", "pi");
-	// pi's startup screen: the hint it prints below the banner.
-	await expect(terminalRows(page)).toContainText(/ctrl\+o/, { timeout: 60_000 });
+	// pi's startup screen. Not the keyboard hint: an upstream update banner can displace it.
+	// The status line with the working directory is always there.
+	await expect(terminalRows(page)).toContainText(PROJECT, { timeout: 60_000 });
 
 	// Typing reaches the TUI: a slash command renders its own screen.
 	await terminalType(page, "/hotkeys");
