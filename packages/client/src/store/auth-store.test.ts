@@ -10,11 +10,11 @@ describe("sortProviders", () => {
 	it("puts configured providers first and sorts the rest by name", () => {
 		const sorted = sortProviders([
 			provider("openai", "OpenAI"),
-			provider("vendor", "Vendor"),
+			provider("acme", "Acme"),
 			provider("nebius", "Nebius", { type: "api_key", source: "configured API key" }),
 			provider("zai", "Z.ai"),
 		]);
-		expect(sorted.map((p) => p.id)).toEqual(["nebius", "vendor", "openai", "zai"]);
+		expect(sorted.map((p) => p.id)).toEqual(["nebius", "acme", "openai", "zai"]);
 	});
 
 	it("does not modify the input", () => {

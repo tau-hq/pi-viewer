@@ -680,10 +680,6 @@ export const en = {
 			},
 			imagesAutoResize: { label: "Shrink images", hint: "Scale attachments down before they go to the provider." },
 			imagesBlockImages: { label: "Block images", hint: "Never send images, whatever a session attaches." },
-			warningsVendorExtraUsage: {
-				label: "Warn about extra Vendor usage",
-				hint: "Warn when a request bills beyond the subscription.",
-			},
 			defaultTools: { label: "Default tools", hint: "Tools a new session starts with." },
 			shellPath: { label: "Shell", hint: "Shell binary for tool calls and the ! commands." },
 			shellCommandPrefix: {

@@ -6,7 +6,7 @@ function model(provider: string, id: string): ModelInfo {
 	return { provider, id, name: id, reasoning: false, input: ["text"], contextWindow: 1000, maxTokens: 100 };
 }
 
-const catalog = [model("nebius", "glm"), model("vendor", "opus")];
+const catalog = [model("nebius", "glm"), model("acme", "argo")];
 
 describe("parseEnabledModels", () => {
 	it("reads the array and ignores anything else in the file", () => {
@@ -35,15 +35,15 @@ describe("toggleEntry and moveEntry", () => {
 describe("patchValue", () => {
 	it("deletes the key when nothing or everything is selected", () => {
 		expect(patchValue([], catalog)).toBeNull();
-		expect(patchValue(["nebius/glm", "vendor/opus"], catalog)).toBeNull();
+		expect(patchValue(["nebius/glm", "acme/argo"], catalog)).toBeNull();
 	});
 	it("keeps a real selection in its order", () => {
-		expect(patchValue(["vendor/opus"], catalog)).toEqual(["vendor/opus"]);
+		expect(patchValue(["acme/argo"], catalog)).toEqual(["acme/argo"]);
 	});
 	it("keeps entries the catalog does not know", () => {
-		expect(patchValue(["nebius/glm", "vendor/opus", "gone/model"], catalog)).toEqual([
+		expect(patchValue(["nebius/glm", "acme/argo", "gone/model"], catalog)).toEqual([
 			"nebius/glm",
-			"vendor/opus",
+			"acme/argo",
 			"gone/model",
 		]);
 	});
@@ -51,9 +51,9 @@ describe("patchValue", () => {
 
 describe("scopedModelRows", () => {
 	it("lists the selection in order, then the rest of the catalog", () => {
-		const rows = scopedModelRows(["vendor/opus", "gone/model"], catalog);
+		const rows = scopedModelRows(["acme/argo", "gone/model"], catalog);
 		expect(rows.map((row) => `${row.key}:${row.selected}:${row.index}`)).toEqual([
-			"vendor/opus:true:0",
+			"acme/argo:true:0",
 			"gone/model:true:1",
 			"nebius/glm:false:-1",
 		]);

@@ -17,7 +17,7 @@ ws.onopen = async () => {
 		const t0 = Date.now(); const providers = await cmd({ type: "auth.providers" });
 		console.log(`providers: ${providers.length} in ${Date.now() - t0} ms; configured:`, providers.filter((p) => p.status).map((p) => `${p.id}(${p.status.type}${p.status.source ? ":" + p.status.source : ""})`));
 		console.log("sample:", providers.slice(0, 4).map((p) => `${p.id}: ${p.methods.map((m) => m.type + "=" + m.label).join("|")}`));
-		const target = providers.find((p) => p.id === "vendor") ?? providers.find((p) => p.methods.some((m) => m.type === "api_key"));
+		const target = providers.find((p) => p.methods.some((m) => m.type === "api_key"));
 		const { flowId } = await cmd({ type: "auth.login", providerId: target.id, method: "api_key" });
 		const prompt = await waitFor((e) => e.type === "auth.prompt" && e.flowId === flowId, 10000);
 		console.log("first prompt:", prompt.prompt.type, JSON.stringify(prompt.prompt.message).slice(0, 80));

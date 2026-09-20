@@ -16,7 +16,7 @@ describe("AuthFlows", () => {
 			expect(key).toBe("sk-test");
 		};
 		const flows = new AuthFlows(fakeLogin);
-		const { flowId } = flows.start("vendor", "api_key", emit);
+		const { flowId } = flows.start("acme", "api_key", emit);
 		await vi.waitFor(() => expect(sent.some((e) => e.type === "auth.prompt")).toBe(true));
 		const prompt = sent.find((e) => e.type === "auth.prompt");
 		if (prompt?.type !== "auth.prompt") throw new Error("no prompt");

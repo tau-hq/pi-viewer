@@ -32,7 +32,7 @@ jobs:
       - name: Linux build dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
-      - run: npm ci --ignore-scripts
+      - run: npm install --ignore-scripts
       - name: Build client
         run: ./node_modules/.bin/tsc -b packages/client && (cd packages/client && ../../node_modules/.bin/vite build)
       - name: Prepare sidecars
